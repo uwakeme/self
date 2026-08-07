@@ -339,7 +339,8 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawNodesAndConnect
     nodePositions: Map<String, Offset>
 ) {
     val allByKind = listOf(
-        Triple(family, familyR, WarmJournalColors.Primary to (PathEffect.dashPathEffect(floatArrayOf(0f)) to 2.5f)),
+        // 家人：实线 → pathEffect 传 null（不能用 dashPathEffect(floatArrayOf(0f))，API 要求偶数长度会崩）
+        Triple(family, familyR, WarmJournalColors.Primary to (null to 2.5f)),
         Triple(friend, friendR, WarmJournalColors.Info to (PathEffect.dashPathEffect(floatArrayOf(6f, 4f)) to 2f)),
         Triple(colleague, otherR, WarmJournalColors.Success to (PathEffect.dashPathEffect(floatArrayOf(3f, 5f)) to 1.5f)),
         Triple(classmate, otherR, WarmJournalColors.Warning to (PathEffect.dashPathEffect(floatArrayOf(3f, 5f)) to 1.5f))
