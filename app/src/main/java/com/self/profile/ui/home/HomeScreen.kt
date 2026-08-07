@@ -69,8 +69,7 @@ fun HomeScreen(
             avatarUrl = state.avatarUrl,
             fallbackColor = state.fallbackColor,
             fallbackInitial = state.fallbackInitial,
-            onAvatarClick = onNavigateToSelf,
-            dailyQuote = quote.text
+            onAvatarClick = onNavigateToSelf
         )
 
         // 快捷操作

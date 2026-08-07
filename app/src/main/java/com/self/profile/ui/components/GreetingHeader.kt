@@ -16,18 +16,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.self.profile.util.parseHexColor
 import java.time.LocalTime
 
 /**
- * 首页问候头部（与 prototype self-profile.html 头部一致）：
+ * 首页问候头部：
  * - 渐变背景（主色 lightest → 页面 bg）
  * - 问候语：基于时间段（早上/下午/晚上）
- * - 副标题：寄语
  * - 右上角头像（点击进我的档案）
+ *
+ * 注：原"寄语"字段已移除——避免与底部 QuoteCard 重复显示同一句格言。
+ *     今日寄语只在 HomeScreen 底部的 QuoteCard 渲染。
  */
 @Composable
 fun GreetingHeader(
@@ -36,7 +37,6 @@ fun GreetingHeader(
     fallbackColor: String,
     fallbackInitial: String,
     onAvatarClick: () -> Unit,
-    dailyQuote: String,
     modifier: Modifier = Modifier
 ) {
     val (greeting, _) = greetingForNow()
@@ -58,14 +58,6 @@ fun GreetingHeader(
                 text = "$greeting，$nickname",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = dailyQuote,
-                style = MaterialTheme.typography.bodyMedium.copy(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
             )
         }
         Box(
