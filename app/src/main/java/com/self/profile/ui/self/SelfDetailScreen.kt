@@ -139,7 +139,7 @@ private fun SelfContent(person: Person, viewModel: SelfEditViewModel) {
                 onMoveDown = { viewModel.moveModule(index, index + 1) }
             )
             if (index < orderedModules.lastIndex) {
-                item(key = "spacer-$index") { Spacer(Modifier.height(8.dp)) }
+                Spacer(Modifier.height(8.dp))
             }
         }
 
