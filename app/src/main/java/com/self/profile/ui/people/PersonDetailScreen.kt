@@ -62,6 +62,7 @@ import com.self.profile.domain.model.SizeInfo
 import com.self.profile.domain.model.WishItem
 import com.self.profile.ui.components.Avatar
 import com.self.profile.ui.components.EmptyState
+import com.self.profile.ui.components.PhotosSection
 import com.self.profile.ui.components.SectionCard
 import com.self.profile.ui.components.TagGroup
 import com.self.profile.ui.components.dialogs.ChoicePickerDialog
@@ -175,6 +176,15 @@ private fun PersonContent(person: Person, vm: PersonDetailViewModel, onBack: () 
             item { SectionWrap("愿望清单") { WishListSection(person.wishList, vm) } }
             item { Spacer(Modifier.height(8.dp)) }
             item { SectionWrap("人生轨迹") { LifeJourneySection(person.lifeJourney, vm) } }
+            item { Spacer(Modifier.height(8.dp)) }
+            item { SectionWrap("照片墙") {
+                PhotosSection(
+                    photos = person.photos,
+                    onAddPhoto = { uri -> vm.addPhoto(uri) },
+                    onRemovePhoto = { id -> vm.removePhoto(id) },
+                    onUpdatePhotoDescription = { id, desc -> vm.updatePhotoDescription(id, desc) }
+                )
+            } }
             item { Spacer(Modifier.height(8.dp)) }
             item { SectionWrap("互动记录") { InteractionsSection(person.interactionNotes, vm) } }
             item { Spacer(Modifier.height(8.dp)) }

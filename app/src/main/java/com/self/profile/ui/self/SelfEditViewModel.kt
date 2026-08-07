@@ -11,12 +11,15 @@ import com.self.profile.domain.model.CategorizedItems
 import com.self.profile.domain.model.LifeJourneyEntry
 import com.self.profile.domain.model.Note
 import com.self.profile.domain.model.Person
+import com.self.profile.domain.model.Photo
 import com.self.profile.domain.model.Reminder
 import com.self.profile.domain.model.ReminderType
 import com.self.profile.domain.model.RepeatRule
 import com.self.profile.domain.model.SelfModule
 import com.self.profile.domain.model.WishItem
+import com.self.profile.util.PhotoStorage
 import com.self.profile.work.ReminderScheduler
+import android.net.Uri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
@@ -39,6 +42,7 @@ class SelfEditViewModel @Inject constructor(
     private val personRepo: PersonRepository,
     private val reminderRepo: ReminderRepository,
     private val settingsStore: SettingsDataStore,
+    private val photoStorage: PhotoStorage,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
@@ -196,6 +200,42 @@ class SelfEditViewModel @Inject constructor(
 
     fun removeAnniversary(id: String) {
         updatePerson { p -> p.copy(anniversaries = p.anniversaries.filter { it.id != id }) }
+    }
+
+    // ====== 照片墙 ======
+
+    /**
+     * 从相册选择返回的 URI 复制到 app 私有目录并加入 photos 列表。
+     * 复制失败（被系统拒绝 / 编码异常）静默跳过。
+     */
+    fun addPhoto(uri: Uri) {
+        viewModelScope.launch {
+            val path = photoStorage.saveFromUri(uri) ?: return@launch
+            val now = System.currentTimeMillis()
+            updatePerson { p ->
+                p.copy(photos = p.photos + Photo(
+                    id = UUID.randomUUID().toString(),
+                    url = path,
+                    description = null,
+                    createdAt = now
+                ))
+            }
+        }
+    }
+
+    fun removePhoto(photoId: String) {
+        val current = (state.value as? SelfDetailUiState.Loaded)?.self ?: return
+        val photo = current.photos.firstOrNull { it.id == photoId } ?: return
+        photoStorage.delete(photo.url)
+        updatePerson { p -> p.copy(photos = p.photos.filter { it.id != photoId }) }
+    }
+
+    fun updatePhotoDescription(photoId: String, description: String) {
+        updatePerson { p ->
+            p.copy(photos = p.photos.map {
+                if (it.id == photoId) it.copy(description = description.takeIf { d -> d.isNotBlank() }) else it
+            })
+        }
     }
 
     // ====== 喜欢/不喜欢 类别操作 ======

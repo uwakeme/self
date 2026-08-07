@@ -11,9 +11,12 @@ import com.self.profile.domain.model.CommonGround
 import com.self.profile.domain.model.LifeJourneyEntry
 import com.self.profile.domain.model.Note
 import com.self.profile.domain.model.Person
+import com.self.profile.domain.model.Photo
 import com.self.profile.domain.model.Reminder
 import com.self.profile.domain.model.WishItem
 import com.self.profile.ui.navigation.Route
+import com.self.profile.util.PhotoStorage
+import android.net.Uri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +36,8 @@ import javax.inject.Inject
 class PersonDetailViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val personRepo: PersonRepository,
-    reminderRepo: ReminderRepository
+    reminderRepo: ReminderRepository,
+    private val photoStorage: PhotoStorage
 ) : ViewModel() {
 
     private val personId: String = savedState.get<String>(Route.PersonDetail.ARG_PERSON_ID).orEmpty()
@@ -216,6 +220,38 @@ class PersonDetailViewModel @Inject constructor(
 
     fun removeLifeJourney(id: String) {
         updatePerson { p -> p.copy(lifeJourney = p.lifeJourney.filter { it.id != id }) }
+    }
+
+    // ====== 照片墙 ======
+
+    fun addPhoto(uri: Uri) {
+        viewModelScope.launch {
+            val path = photoStorage.saveFromUri(uri) ?: return@launch
+            val now = System.currentTimeMillis()
+            updatePerson { p ->
+                p.copy(photos = p.photos + Photo(
+                    id = UUID.randomUUID().toString(),
+                    url = path,
+                    description = null,
+                    createdAt = now
+                ))
+            }
+        }
+    }
+
+    fun removePhoto(photoId: String) {
+        val current = state.value as? PersonDetailUiState.Loaded ?: return
+        val photo = current.person.photos.firstOrNull { it.id == photoId } ?: return
+        photoStorage.delete(photo.url)
+        updatePerson { p -> p.copy(photos = p.photos.filter { it.id != photoId }) }
+    }
+
+    fun updatePhotoDescription(photoId: String, description: String) {
+        updatePerson { p ->
+            p.copy(photos = p.photos.map {
+                if (it.id == photoId) it.copy(description = description.takeIf { d -> d.isNotBlank() }) else it
+            })
+        }
     }
 }
 

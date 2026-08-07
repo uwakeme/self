@@ -77,6 +77,7 @@ import com.self.profile.domain.model.WishItem
 import com.self.profile.ui.components.Avatar
 import com.self.profile.ui.components.EmptyState
 import com.self.profile.ui.components.NumberStepper
+import com.self.profile.ui.components.PhotosSection
 import com.self.profile.ui.components.SectionCard
 import com.self.profile.ui.components.TagGroup
 import com.self.profile.ui.components.dialogs.ChoicePickerDialog
@@ -206,7 +207,12 @@ private fun renderSelfModule(module: SelfModule, person: Person, vm: SelfEditVie
         SelfModule.WISHES -> WishListSection(person.wishList, vm)
         SelfModule.LIFE_JOURNEY -> LifeJourneySection(person.lifeJourney, vm)
         SelfModule.NOTES -> NotesSection(person.thoughtNotes, vm)
-        SelfModule.PHOTOS -> PhotosSection(person.photos.size)
+        SelfModule.PHOTOS -> PhotosSection(
+            photos = person.photos,
+            onAddPhoto = { uri -> vm.addPhoto(uri) },
+            onRemovePhoto = { id -> vm.removePhoto(id) },
+            onUpdatePhotoDescription = { id, desc -> vm.updatePhotoDescription(id, desc) }
+        )
         SelfModule.ANNIVERSARIES -> AnniversariesSection(person.anniversaries, vm)
     }
 }
@@ -1074,24 +1080,6 @@ private fun NotesSection(list: List<Note>, vm: SelfEditViewModel) {
             Spacer(Modifier.width(6.dp))
             Text(text = "新增笔记", style = MaterialTheme.typography.bodySmall, color = WarmJournalColors.Primary)
         }
-    }
-}
-
-@Composable
-private fun PhotosSection(count: Int) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp)
-            .clip(MaterialTheme.shapes.medium)
-            .background(WarmJournalColors.BgSurface),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = if (count == 0) "照片墙（阶段 2 占位）" else "$count 张照片",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
