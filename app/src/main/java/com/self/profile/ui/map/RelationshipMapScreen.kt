@@ -229,9 +229,11 @@ private fun RelationshipCanvas(
             classmate to otherR
         )
         val newPositions = mutableMapOf<String, Offset>()
-        groups.forEach { (people, r) ->
+        // 每环加 PI/4 偏移，避免少人时三环节点全堆在垂直轴上
+        groups.forEachIndexed { ringIndex, (people, r) ->
+            val ringOffset = ringIndex * (PI / 4)
             people.forEachIndexed { i, person ->
-                val theta = (2 * PI * i / people.size.coerceAtLeast(1)) - PI / 2
+                val theta = ringOffset + (2 * PI * i / people.size.coerceAtLeast(1)) - PI / 2
                 val x = cx + r * cos(theta).toFloat()
                 val y = cy + r * sin(theta).toFloat()
                 newPositions[person.id] = Offset(x, y)
