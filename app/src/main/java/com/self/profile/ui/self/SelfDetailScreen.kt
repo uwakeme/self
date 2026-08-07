@@ -19,14 +19,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Checkroom
+import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.AlertDialog
@@ -373,7 +383,7 @@ private fun BackgroundSection(bg: PersonalBackground, vm: SelfEditViewModel) {
     val lunar = birthday?.let { LunarHelper.solarToLunarShort(it) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        EditableKV("家乡", bg.hometown, vm) { newVal -> vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(hometown = newVal)) } }
+        EditableKV("家乡", bg.hometown, vm, leadingIcon = Icons.Filled.Home) { newVal -> vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(hometown = newVal)) } }
         EditableKV("现居地", bg.currentCity, vm, leadingIcon = Icons.Filled.LocationOn) { newVal -> vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(currentCity = newVal)) } }
 
         // 生日（含农历 + 星座）
@@ -399,6 +409,8 @@ private fun BackgroundSection(bg: PersonalBackground, vm: SelfEditViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true }
         ) {
+            LeadingIcon(Icons.Filled.Cake)
+            Spacer(Modifier.width(6.dp))
             Text(
                 text = "生日",
                 style = MaterialTheme.typography.bodySmall,
@@ -423,19 +435,41 @@ private fun BackgroundSection(bg: PersonalBackground, vm: SelfEditViewModel) {
         }
 
         val constellationText = constellation ?: "—"
-        Text(
-            text = "星座：$constellationText（自动计算）",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            LeadingIcon(Icons.Filled.AutoAwesome)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "星座：$constellationText（自动计算）",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 
-        EditableKV("幸运数字", bg.luckyNumbers.joinToString(", "), vm) { newVal: String ->
+        EditableKV("幸运数字", bg.luckyNumbers.joinToString(", "), vm, leadingIcon = Icons.Filled.Star) { newVal: String ->
             val list = newVal.split(",").map { it.trim() }.filter { it.isNotBlank() }
             vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(luckyNumbers = list)) }
         }
         EditableKV("大学", bg.university, vm, leadingIcon = Icons.Filled.School) { newVal -> vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(university = newVal)) } }
-        EditableKV("专业", bg.major, vm) { newVal -> vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(major = newVal)) } }
+        EditableKV("专业", bg.major, vm, leadingIcon = Icons.Filled.MenuBook) { newVal -> vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(major = newVal)) } }
         EditableKV("工作", bg.job, vm, leadingIcon = Icons.Filled.Work) { newVal -> vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(job = newVal)) } }
+    }
+}
+
+@Composable
+private fun LeadingIcon(icon: ImageVector?) {
+    // 固定 20dp 占位：有图标就画，没有就留空，确保标签列永远对齐
+    Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(14.dp)
+            )
+        }
     }
 }
 
@@ -464,15 +498,8 @@ private fun EditableKV(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().clickable { showDialog = true }
     ) {
-        if (leadingIcon != null) {
-            Icon(
-                imageVector = leadingIcon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(14.dp)
-            )
-            Spacer(Modifier.width(6.dp))
-        }
+        LeadingIcon(leadingIcon)
+        Spacer(Modifier.width(6.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
@@ -492,36 +519,36 @@ private fun EditableKV(
 @Composable
 private fun BodySection(b: BodyData, vm: SelfEditViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        NumberKV("血型", b.bloodType, vm) { newVal -> vm.updatePerson { it.copy(bodyData = it.bodyData.copy(bloodType = newVal)) } }
-        NumberKV("身高 (cm)", b.height?.toInt()?.toString(), vm) { newVal ->
+        NumberKV("血型", b.bloodType, vm, leadingIcon = Icons.Filled.ColorLens) { newVal -> vm.updatePerson { it.copy(bodyData = it.bodyData.copy(bloodType = newVal)) } }
+        NumberKV("身高 (cm)", b.height?.toInt()?.toString(), vm, leadingIcon = Icons.Filled.Straighten) { newVal ->
             val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(height = n?.toFloat())) }
         }
-        NumberKV("当前体重 (kg)", b.weight?.toInt()?.toString(), vm) { newVal ->
+        NumberKV("当前体重 (kg)", b.weight?.toInt()?.toString(), vm, leadingIcon = Icons.Filled.MonitorWeight) { newVal ->
             val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(weight = n?.toFloat())) }
         }
-        NumberKV("肩宽 (cm)", b.shoulderWidth?.toInt()?.toString(), vm) { newVal ->
+        NumberKV("肩宽 (cm)", b.shoulderWidth?.toInt()?.toString(), vm, leadingIcon = Icons.Filled.Straighten) { newVal ->
             val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(shoulderWidth = n?.toFloat())) }
         }
-        NumberKV("臂展 (cm)", b.armSpan?.toInt()?.toString(), vm) { newVal ->
+        NumberKV("臂展 (cm)", b.armSpan?.toInt()?.toString(), vm, leadingIcon = Icons.Filled.Straighten) { newVal ->
             val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(armSpan = n?.toFloat())) }
         }
-        NumberKV("胸围 (cm)", b.chest?.toInt()?.toString(), vm) { newVal ->
+        NumberKV("胸围 (cm)", b.chest?.toInt()?.toString(), vm, leadingIcon = Icons.Filled.Straighten) { newVal ->
             val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(chest = n?.toFloat())) }
         }
-        NumberKV("腰围 (cm)", b.waist?.toInt()?.toString(), vm) { newVal ->
+        NumberKV("腰围 (cm)", b.waist?.toInt()?.toString(), vm, leadingIcon = Icons.Filled.Straighten) { newVal ->
             val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(waist = n?.toFloat())) }
         }
-        NumberKV("臀围 (cm)", b.hip?.toInt()?.toString(), vm) { newVal ->
+        NumberKV("臀围 (cm)", b.hip?.toInt()?.toString(), vm, leadingIcon = Icons.Filled.Straighten) { newVal ->
             val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(hip = n?.toFloat())) }
         }
-        NumberKV("臂围 (cm)", b.armGirth?.toInt()?.toString(), vm) { newVal ->
+        NumberKV("臂围 (cm)", b.armGirth?.toInt()?.toString(), vm, leadingIcon = Icons.Filled.Straighten) { newVal ->
             val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(armGirth = n?.toFloat())) }
         }
@@ -533,6 +560,7 @@ private fun NumberKV(
     label: String,
     value: String?,
     vm: SelfEditViewModel,
+    leadingIcon: ImageVector? = null,
     onSave: (String?) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
@@ -550,6 +578,8 @@ private fun NumberKV(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().clickable { showDialog = true }
     ) {
+        LeadingIcon(leadingIcon)
+        Spacer(Modifier.width(6.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
@@ -568,10 +598,10 @@ private fun NumberKV(
 @Composable
 private fun SizeSection(s: SizeInfo, vm: SelfEditViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ChoiceKV("鞋码", s.shoeSize, LunarHelper.allShoeSizes, vm) { newVal -> vm.updatePerson { it.copy(sizeInfo = it.sizeInfo.copy(shoeSize = newVal)) } }
-        ChoiceKV("上衣尺码", s.topSize, LunarHelper.allTopSizes, vm) { newVal -> vm.updatePerson { it.copy(sizeInfo = it.sizeInfo.copy(topSize = newVal)) } }
-        ChoiceKV("裤子尺码", s.pantsSize, LunarHelper.allPantsSizes, vm) { newVal -> vm.updatePerson { it.copy(sizeInfo = it.sizeInfo.copy(pantsSize = newVal)) } }
-        ChoiceKV("裙子尺码", s.skirtSize, LunarHelper.allSkirtSizes, vm) { newVal -> vm.updatePerson { it.copy(sizeInfo = it.sizeInfo.copy(skirtSize = newVal)) } }
+        ChoiceKV("鞋码", s.shoeSize, LunarHelper.allShoeSizes, vm, leadingIcon = Icons.Filled.DirectionsWalk) { newVal -> vm.updatePerson { it.copy(sizeInfo = it.sizeInfo.copy(shoeSize = newVal)) } }
+        ChoiceKV("上衣尺码", s.topSize, LunarHelper.allTopSizes, vm, leadingIcon = Icons.Filled.Checkroom) { newVal -> vm.updatePerson { it.copy(sizeInfo = it.sizeInfo.copy(topSize = newVal)) } }
+        ChoiceKV("裤子尺码", s.pantsSize, LunarHelper.allPantsSizes, vm, leadingIcon = Icons.Filled.Checkroom) { newVal -> vm.updatePerson { it.copy(sizeInfo = it.sizeInfo.copy(pantsSize = newVal)) } }
+        ChoiceKV("裙子尺码", s.skirtSize, LunarHelper.allSkirtSizes, vm, leadingIcon = Icons.Filled.Checkroom) { newVal -> vm.updatePerson { it.copy(sizeInfo = it.sizeInfo.copy(skirtSize = newVal)) } }
     }
 }
 
@@ -581,6 +611,7 @@ private fun ChoiceKV(
     value: String?,
     options: List<String>,
     vm: SelfEditViewModel,
+    leadingIcon: ImageVector? = null,
     onSave: (String?) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
@@ -597,6 +628,8 @@ private fun ChoiceKV(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().clickable { showDialog = true }
     ) {
+        LeadingIcon(leadingIcon)
+        Spacer(Modifier.width(6.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
