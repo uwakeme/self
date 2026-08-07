@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">自我档案</string>
+
+    <!-- Tab labels -->
+    <string name="tab_home">首页</string>
+    <string name="tab_self">档案</string>
+    <string name="tab_people">图鉴</string>
+    <string name="tab_map">图谱</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- 通用 -->
+    <string name="action_confirm">确认</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_save">保存</string>
+    <string name="action_edit">编辑</string>
+    <string name="action_delete">删除</string>
+    <string name="action_add">添加</string>
+
+    <!-- 提醒通知 -->
+    <string name="notif_channel_reminder_id">reminder_channel</string>
+    <string name="notif_channel_reminder_name">生日纪念日提醒</string>
+    <string name="notif_channel_reminder_desc">准时提醒重要的日子</string>
+</resources>

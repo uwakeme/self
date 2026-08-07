@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 暖手账主色（与 design/colors_and_type.css 对应） -->
+    <color name="primary">#C4785B</color>
+    <color name="primary_light">#D99B82</color>
+    <color name="primary_lighter">#EBC8B8</color>
+    <color name="primary_lightest">#F5E6DD</color>
+    <color name="primary_dark">#A65D42</color>
+    <color name="primary_darker">#8B4A33</color>
+
+    <color name="bg">#FBF7F3</color>
+    <color name="bg_warm">#F7F0E8</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="bg_surface">#F5EDE4</color>
+
+    <color name="text_primary">#3D2B1F</color>
+    <color name="text_secondary">#7A6558</color>
+    <color name="text_tertiary">#A89585</color>
+    <color name="border">#E8DDD3</color>
+    <color name="divider">#EDE5DC</color>
+</resources>

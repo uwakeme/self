@@ -1,0 +1,308 @@
+{
+  "project": {
+    "name": "自我档案与人物图鉴",
+    "path": "/workspace/self-profile-app",
+    "operation": "create",
+    "deviceType": "mobile",
+    "language": "zh-CN",
+    "dashboardMode": false,
+    "replicationMode": null,
+    "sourceUrl": null,
+    "visualSpecExcerpt": null,
+    "styleDefinitionBrief": "温暖手账风，暖棕/陶土色调，Georgia衬线标题，圆润卡片，像一本关于自己的手账本",
+    "designRead": "personal journal app / self-explorers / warm intimate journal / medium density / avoid cold tech UI",
+    "designDials": {
+      "layoutVariance": 3,
+      "motionIntensity": 2,
+      "visualDensity": 3
+    },
+    "styleContinuityAnchors": {
+      "colorSystem": {
+        "primaryColorRole": "warm terracotta #C4785B for primary CTA, tags, and accent highlights",
+        "brandHuePolicy": "single warm terracotta hue; no secondary/accent brand hue",
+        "stateColors": "semantic success/warning/error/info for status indicators only"
+      },
+      "shapeSystem": "rounded cards (--radius-lg: 14px), soft buttons (--radius-full for pills), warm feel",
+      "typographySystem": "Georgia serif for display/headings, system sans-serif for body text, CJK fallback PingFang SC",
+      "spacingSystem": "comfortable spacing with --space-4 (16px) base, generous padding on cards",
+      "componentLanguage": "card-based layout, pill tags, warm-toned icons, journal-like sections",
+      "surfaceAndDepth": "border-first static cards (var(--color-border)), subtle shadow only for floating layers",
+      "imageryAndIconography": "warm-toned illustrations, soft gradients, organic shapes",
+      "interactionTone": "gentle, intimate, personal — like writing in a diary"
+    },
+    "specsConstraints": null,
+    "sharedProjectShellContract": {
+      "navigationShell": "bottom tab bar with 2 tabs: 我的档案 + 人物图鉴; warm background, active tab uses primary color",
+      "primaryColorSystem": "single warm terracotta #C4785B for CTA and active states",
+      "typographySystem": "Georgia serif for headings, system sans for body, warm tones",
+      "radiusScale": "sm:4px, md:10px, lg:14px, xl:16px, full:9999px",
+      "surfaceDepthModel": "border-first cards with warm border color, shadow alpha <= 0.05 for static",
+      "ctaStyle": "rounded pill buttons with primary color, warm hover state",
+      "alignmentRules": "left-aligned content, centered section headers, consistent card padding"
+    },
+    "generationTree": {
+      "root": {
+        "nodeId": "gen-project-shell",
+        "kind": "project-shell",
+        "pageIds": ["page-self-profile", "page-people-gallery", "page-self-detail", "page-person-detail"],
+        "output": "partials/project-shell.html",
+        "sharedRegions": ["bottom-tab-bar"],
+        "privateRegions": [],
+        "mutableSlots": ["activeTab"],
+        "status": "planned",
+        "children": [
+          {
+            "nodeId": "gen-page-self-profile",
+            "kind": "page-leaf",
+            "pageIds": ["page-self-profile"],
+            "output": "pages/self-profile.html",
+            "sharedRegions": [],
+            "privateRegions": ["page body: self profile overview"],
+            "mutableSlots": ["activeTab"],
+            "status": "planned",
+            "children": []
+          },
+          {
+            "nodeId": "gen-page-people-gallery",
+            "kind": "page-leaf",
+            "pageIds": ["page-people-gallery"],
+            "output": "pages/people-gallery.html",
+            "sharedRegions": [],
+            "privateRegions": ["page body: people gallery grid"],
+            "mutableSlots": ["activeTab"],
+            "status": "planned",
+            "children": []
+          },
+          {
+            "nodeId": "gen-page-self-detail",
+            "kind": "page-leaf",
+            "pageIds": ["page-self-detail"],
+            "output": "pages/self-detail.html",
+            "sharedRegions": [],
+            "privateRegions": ["page body: self detail sections"],
+            "mutableSlots": [],
+            "status": "planned",
+            "children": []
+          },
+          {
+            "nodeId": "gen-page-person-detail",
+            "kind": "page-leaf",
+            "pageIds": ["page-person-detail"],
+            "output": "pages/person-detail.html",
+            "sharedRegions": [],
+            "privateRegions": ["page body: person detail sections"],
+            "mutableSlots": [],
+            "status": "planned",
+            "children": []
+          }
+        ]
+      }
+    }
+  },
+  "designSource": {
+    "operatingMode": "free-explore",
+    "libraryIdentity": null,
+    "libraryPath": null,
+    "cssFilePath": "/workspace/self-profile-app/colors_and_type.css",
+    "brandPrefix": "",
+    "themeMode": "light",
+    "designDecisionSummary": "Warm journal palette with terracotta primary #C4785B, Georgia serif headings, rounded card layout, mobile-first",
+    "componentContractKind": null,
+    "forbiddenInventedComponents": [],
+    "allowedComponents": [],
+    "styleConstraints": {
+      "radiusMax": 16,
+      "spacingBase": 4,
+      "fontSizeBody": 15,
+      "fontSizeMin": 11,
+      "controlHeightDefault": 36,
+      "controlHeightLarge": 42
+    },
+    "productContext": {
+      "kitType": null,
+      "productType": "personal journal / self-exploration app"
+    },
+    "actualTokenNameReference": [
+      { "semanticPurpose": "Primary brand color", "tokenName": "color-primary" },
+      { "semanticPurpose": "Primary light tint", "tokenName": "color-primary-lighter" },
+      { "semanticPurpose": "Background", "tokenName": "color-bg" },
+      { "semanticPurpose": "Card background", "tokenName": "color-bg-card" },
+      { "semanticPurpose": "Primary text", "tokenName": "color-text" },
+      { "semanticPurpose": "Secondary text", "tokenName": "color-text-secondary" },
+      { "semanticPurpose": "Border", "tokenName": "color-border" },
+      { "semanticPurpose": "Warm surface", "tokenName": "color-bg-surface" }
+    ]
+  },
+  "pages": [
+    {
+      "nodeId": "page-self-profile",
+      "slug": "self-profile",
+      "title": "我的档案",
+      "htmlSrc": "pages/self-profile.html",
+      "pageIndex": 1,
+      "stateGroupId": null,
+      "stateRole": null,
+      "baseStatePageId": null,
+      "sharedShellContract": [],
+      "mutableRegions": [],
+      "derivedFromHtmlSrc": null,
+      "derivationType": "original",
+      "sourcePageId": null,
+      "sourceHtmlSrc": null,
+      "pageType": "information-dense",
+      "businessScenario": "个人档案总览，展示头像、基本信息、MBTI、身体数据概览、喜好标签",
+      "visualNorthStar": "像翻开手账本第一页，温暖亲切，信息层次分明，有写日记的仪式感",
+      "compositionPattern": "Stacked card sections with warm spacing rhythm",
+      "continuityAnchors": ["bottom tab bar", "warm card style", "terracotta accent"],
+      "libraryRestraintMode": false,
+      "uiKitPath": null,
+      "componentPlan": [],
+      "imagePlan": ["avatar-placeholder.jpg"],
+      "chartsRequired": false,
+      "miniProgramStyle": false,
+      "qualityRisks": []
+    },
+    {
+      "nodeId": "page-people-gallery",
+      "slug": "people-gallery",
+      "title": "人物图鉴",
+      "htmlSrc": "pages/people-gallery.html",
+      "pageIndex": 2,
+      "stateGroupId": null,
+      "stateRole": null,
+      "baseStatePageId": null,
+      "sharedShellContract": [],
+      "mutableRegions": [],
+      "derivedFromHtmlSrc": null,
+      "derivationType": "original",
+      "sourcePageId": null,
+      "sourceHtmlSrc": null,
+      "pageType": "showcase",
+      "businessScenario": "人物图鉴列表，展示认识的人的卡片，可搜索和筛选",
+      "visualNorthStar": "像手账本里的人物收集页，每个人物是一张温暖的卡片，有收集的满足感",
+      "compositionPattern": "Card grid with warm hover effects",
+      "continuityAnchors": ["bottom tab bar", "warm card style", "terracotta accent"],
+      "libraryRestraintMode": false,
+      "uiKitPath": null,
+      "componentPlan": [],
+      "imagePlan": ["people-collage.jpg"],
+      "chartsRequired": false,
+      "miniProgramStyle": false,
+      "qualityRisks": []
+    },
+    {
+      "nodeId": "page-self-detail",
+      "slug": "self-detail",
+      "title": "个人详情",
+      "htmlSrc": "pages/self-detail.html",
+      "pageIndex": 3,
+      "stateGroupId": null,
+      "stateRole": null,
+      "baseStatePageId": null,
+      "sharedShellContract": [],
+      "mutableRegions": [],
+      "derivedFromHtmlSrc": null,
+      "derivationType": "original",
+      "sourcePageId": null,
+      "sourceHtmlSrc": null,
+      "pageType": "information-dense",
+      "businessScenario": "个人详细信息页，包含身体数据、喜好、性格分析、MBTI等完整档案",
+      "visualNorthStar": "像手账本的详情展开页，每个分类是一个折叠区块，信息丰富但不拥挤",
+      "compositionPattern": "Accordion sections with warm dividers",
+      "continuityAnchors": ["warm card style", "terracotta accent", "section header style"],
+      "libraryRestraintMode": false,
+      "uiKitPath": null,
+      "componentPlan": [],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false,
+      "qualityRisks": ["dense information sections"]
+    },
+    {
+      "nodeId": "page-person-detail",
+      "slug": "person-detail",
+      "title": "人物详情",
+      "htmlSrc": "pages/person-detail.html",
+      "pageIndex": 4,
+      "stateGroupId": null,
+      "stateRole": null,
+      "baseStatePageId": null,
+      "sharedShellContract": [],
+      "mutableRegions": [],
+      "derivedFromHtmlSrc": null,
+      "derivationType": "original",
+      "sourcePageId": null,
+      "sourceHtmlSrc": null,
+      "pageType": "information-dense",
+      "businessScenario": "他人详细信息页，记录认识的人的档案、喜好、性格等",
+      "visualNorthStar": "像在手账本里翻开某个人物的专属页面，有收集人物卡片的满足感",
+      "compositionPattern": "Profile header + accordion sections",
+      "continuityAnchors": ["warm card style", "terracotta accent", "section header style"],
+      "libraryRestraintMode": false,
+      "uiKitPath": null,
+      "componentPlan": [],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false,
+      "qualityRisks": []
+    }
+  ],
+  "assets": [
+    {
+      "filename": "avatar-placeholder.jpg",
+      "role": "critical-hero",
+      "owningPage": "self-profile",
+      "semanticDescription": "个人头像占位图，温暖色调",
+      "status": "planned"
+    },
+    {
+      "filename": "people-collage.jpg",
+      "role": "supporting-content",
+      "owningPage": "people-gallery",
+      "semanticDescription": "人物图鉴封面装饰图",
+      "status": "planned"
+    }
+  ],
+  "wiringPlan": [
+    {
+      "sourceNodeId": "page-self-profile",
+      "domId": "view-self-detail",
+      "targetPageId": "page-self-detail"
+    },
+    {
+      "sourceNodeId": "page-people-gallery",
+      "domId": "view-person-detail",
+      "targetPageId": "page-person-detail"
+    }
+  ],
+  "hiddenInteractionPlan": [
+    {
+      "sourceNodeId": "page-self-profile",
+      "domId": "tab-people",
+      "targetPageId": "page-people-gallery",
+      "hideEdge": true,
+      "reason": "bottom tab navigation"
+    },
+    {
+      "sourceNodeId": "page-people-gallery",
+      "domId": "tab-self",
+      "targetPageId": "page-self-profile",
+      "hideEdge": true,
+      "reason": "bottom tab navigation"
+    },
+    {
+      "sourceNodeId": "page-self-detail",
+      "domId": "back-to-profile",
+      "targetPageId": "page-self-profile",
+      "hideEdge": true,
+      "reason": "return navigation"
+    },
+    {
+      "sourceNodeId": "page-person-detail",
+      "domId": "back-to-gallery",
+      "targetPageId": "page-people-gallery",
+      "hideEdge": true,
+      "reason": "return navigation"
+    }
+  ]
+}

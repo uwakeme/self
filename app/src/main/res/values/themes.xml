@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 启动屏（基于 androidx.core:core-splashscreen，API 31+ 用 SplashScreen API，
+         API 26-30 自动降级到 windowBackground） -->
+    <style name="Theme.SelfProfile.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.SelfProfile</item>
+    </style>
+
+    <!-- 主主题：安装到 setContent 之后的 SelfTheme 自己接管颜色 -->
+    <style name="Theme.SelfProfile" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor" tools:targetApi="l">@color/primary_lightest</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+    </style>
+
+</resources>
