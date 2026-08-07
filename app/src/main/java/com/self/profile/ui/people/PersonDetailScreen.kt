@@ -824,7 +824,7 @@ private fun LifeJourneySection(list: List<LifeJourneyEntry>, vm: PersonDetailVie
                     modifier = Modifier.width(56.dp),
                     horizontalAlignment = Alignment.End
                 ) {
-                    Text(text = e.year, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = e.year, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Spacer(Modifier.width(12.dp))
                 Box(
@@ -836,7 +836,7 @@ private fun LifeJourneySection(list: List<LifeJourneyEntry>, vm: PersonDetailVie
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = e.title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = e.title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                     Text(text = e.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 IconButton(onClick = { vm.removeLifeJourney(e.id) }, modifier = Modifier.size(28.dp)) {
