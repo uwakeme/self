@@ -303,7 +303,7 @@ private fun RelationshipCanvas(
 
             // 中心节点（pulse）
             val pulseAlpha = 0.3f + 0.4f * pulse
-            val pulseRadius = 32f + 6f * pulse
+            val pulseRadius = 36f + 6f * pulse
             drawCircle(
                 color = WarmJournalColors.Primary.copy(alpha = pulseAlpha * 0.5f),
                 radius = pulseRadius + 10,
@@ -311,14 +311,23 @@ private fun RelationshipCanvas(
             )
             drawCircle(
                 color = WarmJournalColors.Primary,
-                radius = 32f,
+                radius = 36f,
                 center = Offset(cx, cy)
             )
+            val centerStyle = TextStyle(
+                color = Color.White,
+                fontSize = 16.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Serif
+            )
+            val centerMeasured = textMeasurer.measure(AnnotatedString("我"), centerStyle)
             drawText(
                 textMeasurer = textMeasurer,
                 text = AnnotatedString("我"),
-                topLeft = Offset(cx - 8f, cy - 12f),
-                style = TextStyle(color = Color.White, fontSize = 16.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Serif)
+                topLeft = Offset(
+                    cx - centerMeasured.size.width / 2f,
+                    cy - centerMeasured.size.height / 2f
+                ),
+                style = centerStyle
             )
 
             // 节点位置 + 连线（用 Composed 阶段算好的位置）
@@ -365,21 +374,27 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawNodesAndConnect
     }
 
     // 节点
+    val nodeStyle = TextStyle(color = Color.White, fontSize = 12.sp)
     allByKind.forEach { (people, _, styleInfo) ->
         val (color, _) = styleInfo
         people.forEach { person ->
             val pos = nodePositions[person.id] ?: return@forEach
             drawCircle(
                 color = color,
-                radius = 24f,
+                radius = 28f,
                 center = pos
             )
-            // 文字
+            // 文字（用 textMeasurer 量实际尺寸后居中，避免硬编码 offset 在高密度屏溢出）
+            val label = AnnotatedString(person.avatarInitial.take(1))
+            val measured = textMeasurer.measure(label, nodeStyle)
             drawText(
                 textMeasurer = textMeasurer,
-                text = AnnotatedString(person.avatarInitial.take(1)),
-                topLeft = Offset(pos.x - 8f, pos.y - 8f),
-                style = TextStyle(color = Color.White, fontSize = 13.sp)
+                text = label,
+                topLeft = Offset(
+                    pos.x - measured.size.width / 2f,
+                    pos.y - measured.size.height / 2f
+                ),
+                style = nodeStyle
             )
         }
     }
