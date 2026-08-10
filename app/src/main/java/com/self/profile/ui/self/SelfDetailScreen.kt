@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -55,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -136,6 +136,10 @@ private fun SelfContent(
     }
     var editOrderMode by rememberSaveable { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
+    // 当 IdentityHeader 滚出屏幕外（firstVisibleItemIndex > 0）时显示浮起副本
+    val showStickyHeader by remember {
+        derivedStateOf { lazyListState.firstVisibleItemIndex > 0 }
+    }
 
     // scrollTo 滚动：等首帧渲染完成再 animateScrollToItem
     LaunchedEffect(scrollTo, loaded) {
@@ -154,23 +158,21 @@ private fun SelfContent(
         }
     }
 
-    LazyColumn(
-        state = lazyListState,
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // 身份头部 sticky：滚动时固定在 LazyColumn 顶部
-        stickyHeader {
-            IdentityHeader(
-                person = person,
-                vm = viewModel,
-                editOrderMode = editOrderMode,
-                onToggleEditOrder = { editOrderMode = !editOrderMode },
-                onResetOrder = { viewModel.resetModuleOrder() }
-            )
-        }
-        item { Spacer(Modifier.height(8.dp)) }
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            item {
+                IdentityHeader(
+                    person = person,
+                    vm = viewModel,
+                    editOrderMode = editOrderMode,
+                    onToggleEditOrder = { editOrderMode = !editOrderMode },
+                    onResetOrder = { viewModel.resetModuleOrder() }
+                )
+            }
+            item { Spacer(Modifier.height(8.dp)) }
 
         items(
             count = orderedModules.size,
@@ -193,6 +195,21 @@ private fun SelfContent(
         }
 
         item { Spacer(Modifier.height(32.dp)) }
+        }
+
+        // Sticky overlay：IdentityHeader 是 item 0，滚出后浮起一份
+        if (showStickyHeader) {
+            IdentityHeader(
+                person = person,
+                vm = viewModel,
+                editOrderMode = editOrderMode,
+                onToggleEditOrder = { editOrderMode = !editOrderMode },
+                onResetOrder = { viewModel.resetModuleOrder() },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .background(MaterialTheme.colorScheme.background)
+            )
+        }
     }
 }
 
@@ -303,7 +320,8 @@ private fun IdentityHeader(
     vm: SelfEditViewModel,
     editOrderMode: Boolean,
     onToggleEditOrder: () -> Unit,
-    onResetOrder: () -> Unit
+    onResetOrder: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var showNameDialog by remember { mutableStateOf(false) }
     var showMbtiDialog by remember { mutableStateOf(false) }
@@ -335,7 +353,7 @@ private fun IdentityHeader(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .padding(top = 8.dp, bottom = 20.dp)

@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.stickyHeader
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -115,6 +116,10 @@ fun PersonDetailScreen(
 @Composable
 private fun PersonContent(person: Person, vm: PersonDetailViewModel, onBack: () -> Unit) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val lazyListState = rememberLazyListState()
+    val showStickyHeader by remember {
+        derivedStateOf { lazyListState.firstVisibleItemIndex > 0 }
+    }
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -155,46 +160,61 @@ private fun PersonContent(person: Person, vm: PersonDetailViewModel, onBack: () 
             }
         }
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            stickyHeader { PersonHeader(person, vm) }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("个人背景") { BackgroundSection(person.personalBackground, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("身体数据") { BodySection(person.bodyData, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("尺码信息") { SizeSection(person.sizeInfo, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("喜欢的事物") { CategorizedSection(person.thingsLiked, isLiked = true, vm = vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("不喜欢的事物") { CategorizedSection(person.thingsDisliked, isLiked = false, vm = vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("性格分析") { PersonalitySection(person.personalityAnalysis, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("理想型") { IdealTypeSection(person.idealType, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("憧憬与目标") { AspirationsSection(person.aspirations, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("愿望清单") { WishListSection(person.wishList, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("人生轨迹") { LifeJourneySection(person.lifeJourney, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("照片墙") {
-                PhotosSection(
-                    photos = person.photos,
-                    onAddPhoto = { uri -> vm.addPhoto(uri) },
-                    onRemovePhoto = { id -> vm.removePhoto(id) },
-                    onUpdatePhotoDescription = { id, desc -> vm.updatePhotoDescription(id, desc) }
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                item { PersonHeader(person, vm) }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("个人背景") { BackgroundSection(person.personalBackground, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("身体数据") { BodySection(person.bodyData, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("尺码信息") { SizeSection(person.sizeInfo, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("喜欢的事物") { CategorizedSection(person.thingsLiked, isLiked = true, vm = vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("不喜欢的事物") { CategorizedSection(person.thingsDisliked, isLiked = false, vm = vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("性格分析") { PersonalitySection(person.personalityAnalysis, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("理想型") { IdealTypeSection(person.idealType, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("憧憬与目标") { AspirationsSection(person.aspirations, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("愿望清单") { WishListSection(person.wishList, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("人生轨迹") { LifeJourneySection(person.lifeJourney, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("照片墙") {
+                    PhotosSection(
+                        photos = person.photos,
+                        onAddPhoto = { uri -> vm.addPhoto(uri) },
+                        onRemovePhoto = { id -> vm.removePhoto(id) },
+                        onUpdatePhotoDescription = { id, desc -> vm.updatePhotoDescription(id, desc) }
+                    )
+                } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("互动记录") { InteractionsSection(person.interactionNotes, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("共同点") { CommonGroundsSection(person.commonGrounds, vm) } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item { SectionWrap("纪念日", action = { AddAnniversaryTrigger(vm) }) {
+                    AnniversariesSection(person.anniversaries)
+                } }
+                item { Spacer(Modifier.height(32.dp)) }
+            }
+
+            // Sticky overlay：PersonHeader 是 item 0，滚出后浮起一份
+            if (showStickyHeader) {
+                PersonHeader(
+                    person, vm,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .background(MaterialTheme.colorScheme.background)
                 )
-            } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("互动记录") { InteractionsSection(person.interactionNotes, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("共同点") { CommonGroundsSection(person.commonGrounds, vm) } }
-            item { Spacer(Modifier.height(8.dp)) }
-            item { SectionWrap("纪念日", action = { AddAnniversaryTrigger(vm) }) {
-                AnniversariesSection(person.anniversaries)
-            } }
-            item { Spacer(Modifier.height(32.dp)) }
+            }
         }
     }
 }
@@ -222,7 +242,7 @@ private fun EditIcon(onClick: () -> Unit) {
 }
 
 @Composable
-private fun PersonHeader(person: Person, vm: PersonDetailViewModel) {
+private fun PersonHeader(person: Person, vm: PersonDetailViewModel, modifier: Modifier = Modifier) {
     var showNameDialog by remember { mutableStateOf(false) }
     var showMbtiDialog by remember { mutableStateOf(false) }
     var showTypeDialog by remember { mutableStateOf(false) }
@@ -263,7 +283,7 @@ private fun PersonHeader(person: Person, vm: PersonDetailViewModel) {
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
             .padding(20.dp),
