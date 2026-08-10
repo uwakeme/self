@@ -26,31 +26,29 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.widget.Toast
 import com.self.profile.domain.model.RelationshipType
 import com.self.profile.ui.components.Avatar
 import com.self.profile.ui.components.dialogs.ChoicePickerDialog
 import com.self.profile.ui.theme.WarmJournalColors
 import com.self.profile.util.LunarHelper
 import com.self.profile.util.parseHexColor
-import kotlinx.coroutines.launch
 
 /**
  * 添加新人物（US-009）。
@@ -68,12 +66,9 @@ fun AddPersonScreen(
 ) {
     val form by viewModel.form.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { inner ->
+    Scaffold { inner ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -149,13 +144,12 @@ fun AddPersonScreen(
             // 保存按钮
             Button(
                 onClick = {
-                    scope.launch {
-                        viewModel.save { person ->
-                            scope.launch {
-                                snackbarHostState.showSnackbar("已添加「${person.name}」")
-                            }
-                            onSaved()
-                        }
+                    viewModel.save { person ->
+                        // 用 Toast 而非 Snackbar：Snackbar 依赖当前 Scaffold 的 SnackbarHost，
+                        // popBackStack 后 Composable 销毁，Snackbar 会跟着消失；Toast 是 Window 级，
+                        // 跟 Composable 生命周期无关
+                        Toast.makeText(context, "已添加「${person.name}」", Toast.LENGTH_SHORT).show()
+                        onSaved()
                     }
                 },
                 enabled = viewModel.isValid() && !saving,

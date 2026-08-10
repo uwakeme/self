@@ -37,15 +37,23 @@ fun AppNav(navController: NavHostController = rememberNavController()) {
         ) {
             composable(Route.Home.path) {
                 HomeScreen(
-                    onNavigateToSelf = { navController.navigate(Route.Self.path) },
+                    onNavigateToSelf = { scrollTo -> navController.navigate(Route.Self.build(scrollTo)) },
                     onNavigateToPeople = { navController.navigate(Route.People.path) },
                     onNavigateToMap = { navController.navigate(Route.Map.path) },
                     onNavigateToSettings = { navController.navigate(Route.Settings.path) },
                     onNavigateToReminders = { navController.navigate(Route.ReminderCenter.path) }
                 )
             }
-            composable(Route.Self.path) {
-                SelfDetailScreen()
+            composable(
+                route = Route.Self.path,
+                arguments = listOf(navArgument(Route.Self.ARG_SCROLL_TO) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                })
+            ) { entry ->
+                val scrollTo = entry.arguments?.getString(Route.Self.ARG_SCROLL_TO)
+                SelfDetailScreen(scrollTo = scrollTo)
             }
             composable(Route.People.path) {
                 PeopleGalleryScreen(

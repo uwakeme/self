@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -47,6 +49,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,12 +92,19 @@ import com.self.profile.util.LunarHelper
 import com.self.profile.util.parseHexColor
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
 
 /**
  * 我的档案（US-006）：14 个模块的查看 + 编辑。
+ *
+ * @param scrollTo 可选，跳转到此 screen 时自动滚到指定 section：
+ *  - "notes"          随想笔记
+ *  - "anniversaries"  纪念日
+ *  - null             不滚动
  */
 @Composable
 fun SelfDetailScreen(
+    scrollTo: String? = null,
     viewModel: SelfEditViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -104,12 +114,20 @@ fun SelfDetailScreen(
                 Text(text = "加载中…", style = MaterialTheme.typography.bodyLarge)
             }
         }
-        is SelfDetailUiState.Loaded -> SelfContent(person = s.self, viewModel = viewModel)
+        is SelfDetailUiState.Loaded -> SelfContent(
+            person = s.self,
+            viewModel = viewModel,
+            scrollTo = scrollTo
+        )
     }
 }
 
 @Composable
-private fun SelfContent(person: Person, viewModel: SelfEditViewModel) {
+private fun SelfContent(
+    person: Person,
+    viewModel: SelfEditViewModel,
+    scrollTo: String?
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val loaded = state as? SelfDetailUiState.Loaded
     val moduleOrder = loaded?.moduleOrder ?: SelfModule.defaultOrder
@@ -117,13 +135,33 @@ private fun SelfContent(person: Person, viewModel: SelfEditViewModel) {
         moduleOrder.mapNotNull { idx -> SelfModule.values().getOrNull(idx - 1) }
     }
     var editOrderMode by rememberSaveable { mutableStateOf(false) }
+    val lazyListState = rememberLazyListState()
+
+    // scrollTo 滚动：等首帧渲染完成再 animateScrollToItem
+    LaunchedEffect(scrollTo, loaded) {
+        if (scrollTo == null || loaded == null) return@LaunchedEffect
+        val targetModule = when (scrollTo) {
+            "notes" -> SelfModule.NOTES
+            "anniversaries" -> SelfModule.ANNIVERSARIES
+            else -> null
+        } ?: return@LaunchedEffect
+        val moduleIdx = orderedModules.indexOf(targetModule)
+        if (moduleIdx >= 0) {
+            // LazyColumn 里：item 0 = IdentityHeader, item 1 = Spacer, items() 从 2 开始
+            // 所以 module i 的 item index = i + 2
+            delay(120)  // 等首帧布局完成
+            lazyListState.animateScrollToItem(index = moduleIdx + 2)
+        }
+    }
 
     LazyColumn(
+        state = lazyListState,
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        item {
+        // 身份头部 sticky：滚动时固定在 LazyColumn 顶部
+        stickyHeader {
             IdentityHeader(
                 person = person,
                 vm = viewModel,

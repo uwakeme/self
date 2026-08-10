@@ -8,7 +8,16 @@ package com.self.profile.ui.navigation
 sealed class Route(val path: String) {
     // 顶级 Tab
     data object Home : Route("home")
-    data object Self : Route("self")
+    /**
+     * Self tab 路由：默认 `self`，可加 `?scrollTo=<moduleName>` 跳到指定 section。
+     * - scrollTo = "notes"          → 滚到"随想笔记"
+     * - scrollTo = "anniversaries"  → 滚到"纪念日"
+     */
+    data object Self : Route("self?scrollTo={scrollTo}") {
+        const val ARG_SCROLL_TO = "scrollTo"
+        fun build(scrollTo: String? = null): String =
+            if (scrollTo.isNullOrBlank()) "self" else "self?scrollTo=$scrollTo"
+    }
     data object People : Route("people")
     data object Map : Route("map")
     data object Settings : Route("settings")

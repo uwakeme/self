@@ -48,7 +48,13 @@ import com.self.profile.util.parseHexColor
  */
 @Composable
 fun HomeScreen(
-    onNavigateToSelf: () -> Unit,
+    /**
+     * 跳到自我档案 tab。`scrollTo` 可选：
+     * - "notes"          滚到"随想笔记"section
+     * - "anniversaries"  滚到"纪念日"section
+     * - null             跳过去但不滚
+     */
+    onNavigateToSelf: (scrollTo: String?) -> Unit,
     onNavigateToPeople: () -> Unit,
     onNavigateToMap: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -69,16 +75,16 @@ fun HomeScreen(
             avatarUrl = state.avatarUrl,
             fallbackColor = state.fallbackColor,
             fallbackInitial = state.fallbackInitial,
-            onAvatarClick = onNavigateToSelf
+            onAvatarClick = { onNavigateToSelf(null) }
         )
 
         // 快捷操作
         Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
             SectionCard(title = "快捷操作") {
                 QuickActionRow(
-                    onWriteNote = onNavigateToSelf,
+                    onWriteNote = { onNavigateToSelf("notes") },
                     onAddPerson = onNavigateToPeople,
-                    onAnniversary = onNavigateToSelf,
+                    onAnniversary = { onNavigateToSelf("anniversaries") },
                     onReminder = onNavigateToSettings
                 )
             }

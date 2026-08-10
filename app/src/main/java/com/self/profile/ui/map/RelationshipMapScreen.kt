@@ -370,6 +370,13 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawNodesAndConnect
                 strokeWidth = width * 2f,
                 pathEffect = pathEffect
             )
+            // 连线中点装饰圆点（AC-011-8）
+            val mid = Offset((cx + pos.x) / 2f, (cy + pos.y) / 2f)
+            drawCircle(
+                color = color.copy(alpha = if (person.relationshipType == RelationshipType.FAMILY) 0.7f else 0.5f),
+                radius = 3f,
+                center = mid
+            )
         }
     }
 

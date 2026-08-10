@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -155,7 +156,7 @@ private fun PersonContent(person: Person, vm: PersonDetailViewModel, onBack: () 
         }
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item { PersonHeader(person, vm) }
+            stickyHeader { PersonHeader(person, vm) }
             item { Spacer(Modifier.height(8.dp)) }
             item { SectionWrap("个人背景") { BackgroundSection(person.personalBackground, vm) } }
             item { Spacer(Modifier.height(8.dp)) }
