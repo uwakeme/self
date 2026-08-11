@@ -10,7 +10,7 @@ import java.time.ZoneId
 /**
  * 提醒时间计算工具。
  *
- * 单一来源：ReminderWorker 触发后算下次触发、ReminderCenterViewModel 开启时算下次触发，
+ * 单一来源：ReminderWorker 触发后算下次触发、SettingsViewModel 开启时算下次触发，
  * 都走这里。
  */
 object ReminderCalc {

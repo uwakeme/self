@@ -795,6 +795,7 @@ private fun PersonalitySection(text: String?, vm: SelfEditViewModel) {
     }
     TextBlock(
         text = text,
+        bodyLarge = true,
         onClick = { showDialog = true }
     )
 }
@@ -813,12 +814,19 @@ private fun IdealTypeSection(text: String?, vm: SelfEditViewModel) {
     }
     TextBlock(
         text = text,
+        bodyLarge = true,
         onClick = { showDialog = true }
     )
 }
 
+/**
+ * 长段落文本块。
+ *
+ * @param bodyLarge 长描述（性格分析 / 理想型）传 true，用 bodyLarge (15sp) 读着更舒服；
+ *                  其它短描述默认 bodyMedium (13sp) 跟周围 KV 行对齐。
+ */
 @Composable
-private fun TextBlock(text: String?, onClick: () -> Unit) {
+private fun TextBlock(text: String?, bodyLarge: Boolean = false, onClick: () -> Unit) {
     if (text.isNullOrBlank()) {
         Text(
             text = "点击编辑",
@@ -829,7 +837,7 @@ private fun TextBlock(text: String?, onClick: () -> Unit) {
     } else {
         Text(
             text = text,
-            style = MaterialTheme.typography.bodyMedium,
+            style = if (bodyLarge) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.clickable { onClick() }
         )

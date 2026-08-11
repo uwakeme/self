@@ -55,14 +55,15 @@
     static <1>$Companion Companion;
 }
 
-# 防止 enum 序列化被破坏
--keepclassmembers @kotlinx.serialization.Serializable enum class * {
+# 防止 enum 序列化被破坏（values() / valueOf() 反射调用）
+-keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
 
 # AppSettings / DarkModePref / FontSizePref / GallerySortRule / ReminderType / RepeatRule / RelationshipType / ClosenessLevel
--keep enum class com.self.profile.domain.model.** { *; }
+# （** 通配符已覆盖 enum 类型；R8 不接受 `-keep enum class` 这种 `enum` 修饰符）
+-keep class com.self.profile.domain.model.** { *; }
 
 ############################################
 # Compose

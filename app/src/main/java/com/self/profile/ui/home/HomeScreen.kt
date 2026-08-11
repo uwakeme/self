@@ -58,7 +58,6 @@ fun HomeScreen(
     onNavigateToPeople: () -> Unit,
     onNavigateToMap: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToReminders: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -99,7 +98,7 @@ fun HomeScreen(
                         text = "查看全部 >",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onNavigateToReminders() }
+                        modifier = Modifier.clickable { onNavigateToSettings() }
                     )
                 }
             ) {

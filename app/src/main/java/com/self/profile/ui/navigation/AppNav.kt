@@ -15,7 +15,6 @@ import com.self.profile.ui.map.RelationshipMapScreen
 import com.self.profile.ui.people.AddPersonScreen
 import com.self.profile.ui.people.PeopleGalleryScreen
 import com.self.profile.ui.people.PersonDetailScreen
-import com.self.profile.ui.reminder.ReminderCenterScreen
 import com.self.profile.ui.self.SelfDetailScreen
 import com.self.profile.ui.settings.SettingsScreen
 
@@ -40,8 +39,7 @@ fun AppNav(navController: NavHostController = rememberNavController()) {
                     onNavigateToSelf = { scrollTo -> navController.navigate(Route.Self.build(scrollTo)) },
                     onNavigateToPeople = { navController.navigate(Route.People.path) },
                     onNavigateToMap = { navController.navigate(Route.Map.path) },
-                    onNavigateToSettings = { navController.navigate(Route.Settings.path) },
-                    onNavigateToReminders = { navController.navigate(Route.ReminderCenter.path) }
+                    onNavigateToSettings = { navController.navigate(Route.Settings.path) }
                 )
             }
             composable(
@@ -91,11 +89,6 @@ fun AppNav(navController: NavHostController = rememberNavController()) {
                 AddPersonScreen(
                     onBack = { navController.popBackStack() },
                     onSaved = { navController.popBackStack() }
-                )
-            }
-            composable(Route.ReminderCenter.path) {
-                ReminderCenterScreen(
-                    onBack = { navController.popBackStack() }
                 )
             }
         }

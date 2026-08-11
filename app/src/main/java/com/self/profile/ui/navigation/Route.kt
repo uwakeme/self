@@ -29,7 +29,6 @@ sealed class Route(val path: String) {
     }
 
     data object AddPerson : Route("people/add")
-    data object ReminderCenter : Route("reminders")
 }
 
 /**
