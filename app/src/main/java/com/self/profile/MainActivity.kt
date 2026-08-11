@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
@@ -16,6 +17,8 @@ import com.self.profile.ui.navigation.AppNav
 import com.self.profile.ui.settings.AppLockManager
 import com.self.profile.ui.settings.AppLockViewModel
 import com.self.profile.ui.settings.LockScreen
+import com.self.profile.ui.settings.LockScreenCallbacks
+import com.self.profile.ui.settings.LockScreenState
 import com.self.profile.ui.theme.SelfTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -43,6 +46,35 @@ class MainActivity : FragmentActivity() {
             val fontScale by settingsVm.fontScale.collectAsState()
             val isLocked by appLockManager.isLocked.collectAsState()
 
+            // 应用锁状态：失败计数 / 倒计时 / 是否强制设备密码
+            val requireDeviceCredentialOnly by appLockManager.requireDeviceCredentialOnly.collectAsState()
+            val lockoutRemainingMs by appLockManager.lockoutRemainingMs.collectAsState()
+            val biometricFailCount by appLockManager.biometricFailCount.collectAsState()
+            val deviceCredentialFailCount by appLockManager.deviceCredentialFailCount.collectAsState()
+
+            val lockState = remember(
+                requireDeviceCredentialOnly, lockoutRemainingMs,
+                biometricFailCount, deviceCredentialFailCount
+            ) {
+                LockScreenState(
+                    requireDeviceCredentialOnly = requireDeviceCredentialOnly,
+                    lockoutRemainingMs = lockoutRemainingMs,
+                    biometricFailCount = biometricFailCount,
+                    deviceCredentialFailCount = deviceCredentialFailCount
+                )
+            }
+
+            val lockCallbacks = remember {
+                LockScreenCallbacks(
+                    onUnlocked = { appLockManager.unlock() },
+                    onBiometricFailed = { appLockManager.onBiometricFailed() },
+                    onDeviceCredentialFailed = { appLockManager.onDeviceCredentialFailed() },
+                    onSystemLockout = { appLockManager.onSystemLockout() },
+                    onUserCancelled = { appLockManager.onUserCancelled() },
+                    onLockoutExpired = { appLockManager.onLockoutExpired() }
+                )
+            }
+
             SelfTheme(
                 darkMode = darkMode,
                 fontScale = fontScale
@@ -52,7 +84,10 @@ class MainActivity : FragmentActivity() {
                         AppNav()
                     }
                     if (isLocked) {
-                        LockScreen(onUnlocked = { appLockManager.unlock() })
+                        LockScreen(
+                            state = lockState,
+                            callbacks = lockCallbacks
+                        )
                     }
                 }
             }
