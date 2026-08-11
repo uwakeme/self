@@ -58,4 +58,8 @@ interface ReminderDao {
 
     @Query("DELETE FROM reminders WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    /** 清空所有提醒，用于"数据管理 - 清除"流程 */
+    @Query("DELETE FROM reminders")
+    suspend fun deleteAll()
 }

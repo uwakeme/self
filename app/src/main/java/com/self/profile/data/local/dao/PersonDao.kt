@@ -59,6 +59,10 @@ interface PersonDao {
     @Query("DELETE FROM persons WHERE id = :id AND is_self = 0")
     suspend fun deleteById(id: String)
 
+    /** 清空所有人物（含自己），用于"数据管理 - 清除"流程 */
+    @Query("DELETE FROM persons")
+    suspend fun deleteAll()
+
     @Query("SELECT COUNT(*) FROM persons")
     suspend fun count(): Int
 }

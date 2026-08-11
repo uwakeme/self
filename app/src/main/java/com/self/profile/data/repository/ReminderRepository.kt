@@ -44,6 +44,9 @@ class ReminderRepository @Inject constructor(
 
     suspend fun delete(id: String) = dao.deleteById(id)
 
+    /** 清空所有提醒。供"数据管理 - 清除"使用。 */
+    suspend fun deleteAll() = dao.deleteAll()
+
     private fun toDomain(e: ReminderEntity): Reminder = Reminder(
         id = e.id,
         personId = e.personId,

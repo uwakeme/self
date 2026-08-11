@@ -9,6 +9,7 @@ import com.self.profile.data.repository.ReminderRepository
 import com.self.profile.domain.model.AppSettings
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.Reminder
+import com.self.profile.util.PhotoStorage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
@@ -33,7 +34,8 @@ class DataExporter @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val personRepo: PersonRepository,
     private val reminderRepo: ReminderRepository,
-    private val settingsStore: SettingsDataStore
+    private val settingsStore: SettingsDataStore,
+    private val photoStorage: PhotoStorage
 ) {
 
     /**
@@ -75,9 +77,42 @@ class DataExporter @Inject constructor(
         )
     }
 
+    /**
+     * 清空所有用户数据（人物 + 提醒 + 照片）。
+     *
+     * 设计原则：
+     * - **不**触碰设置项（深色模式、字体、应用锁、提醒默认值、模块顺序等都是 app 偏好，不属于"数据"）。
+     * - 先删提醒再删人物，避免顺序问题（虽然当前 schema 没外键，但顺序上更安全）。
+     * - 照片文件在最后清（即便 DB 引用已断，文件不再被访问）。
+     *
+     * @return 实际删除的数量，方便 UI 展示
+     */
+    suspend fun clearAllData(): ClearSummary {
+        val peopleBefore = personRepo.observeAll().first().size
+        val remindersBefore = reminderRepo.observeAll().first().size
+        val photosBefore = photoStorage.photosDir().listFiles()?.size ?: 0
+
+        reminderRepo.deleteAll()
+        personRepo.deleteAll()
+        photoStorage.photosDir().listFiles()?.forEach { it.delete() }
+
+        return ClearSummary(
+            peopleDeleted = peopleBefore,
+            remindersDeleted = remindersBefore,
+            photosDeleted = photosBefore
+        )
+    }
+
     private fun formatTimestamp(ts: Long): String =
         SimpleDateFormat("yyyyMMdd-HHmmss", Locale.getDefault()).format(Date(ts))
 }
+
+/** 清除结果摘要，用于 UI 反馈。 */
+data class ClearSummary(
+    val peopleDeleted: Int,
+    val remindersDeleted: Int,
+    val photosDeleted: Int
+)
 
 /**
  * 备份数据 DTO。version 用于未来 schema 演进时做兼容判断。

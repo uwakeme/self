@@ -17,23 +17,31 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -45,6 +53,7 @@ import com.self.profile.ui.components.Avatar
 import com.self.profile.ui.components.SectionCard
 import com.self.profile.ui.components.dialogs.ChoicePickerDialog
 import com.self.profile.ui.theme.WarmJournalColors
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -63,9 +72,13 @@ fun SettingsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val exportState by viewModel.exportState.collectAsStateWithLifecycle()
+    val clearState by viewModel.clearState.collectAsStateWithLifecycle()
 
     var showDarkModePicker by remember { mutableStateOf(false) }
     var showFontScalePicker by remember { mutableStateOf(false) }
+    var showDataManageSheet by remember { mutableStateOf(false) }
+    var showClearStep1 by remember { mutableStateOf(false) }
+    var showClearStep2 by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -204,8 +217,12 @@ fun SettingsScreen(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     SettingRow(
                         label = "数据管理",
-                        value = if (exportState is ExportState.Running) "导出中…" else "导出/清除",
-                        onClick = { viewModel.exportData() }
+                        value = when {
+                            clearState is ClearState.Running -> "清除中…"
+                            exportState is ExportState.Running -> "导出中…"
+                            else -> "导出/清除"
+                        },
+                        onClick = { showDataManageSheet = true }
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     ToggleRow(
@@ -284,6 +301,221 @@ fun SettingsScreen(
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearExportState() }) { Text("好的") }
                 }
+            )
+        }
+    }
+
+    // 数据管理 BottomSheet
+    if (showDataManageSheet) {
+        DataManageBottomSheet(
+            onExport = {
+                showDataManageSheet = false
+                viewModel.exportData()
+            },
+            onClear = {
+                showDataManageSheet = false
+                showClearStep1 = true
+            },
+            onDismiss = { showDataManageSheet = false }
+        )
+    }
+
+    // 清除确认：第一步（带统计）
+    if (showClearStep1) {
+        AlertDialog(
+            onDismissRequest = { showClearStep1 = false },
+            title = { Text("清除所有数据？") },
+            text = {
+                Text(
+                    "将永久删除：\n" +
+                        "· ${state.total} 位人物（含你自己）\n" +
+                        "· ${state.all.size} 条提醒\n" +
+                        "· 所有已上传的照片\n\n" +
+                        "设置项（深色模式、字体、应用锁等）不会被清除。"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearStep1 = false
+                        showClearStep2 = true
+                    }
+                ) { Text("继续") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearStep1 = false }) { Text("取消") }
+            }
+        )
+    }
+
+    // 清除确认：第二步（最终警告）
+    if (showClearStep2) {
+        AlertDialog(
+            onDismissRequest = { showClearStep2 = false },
+            title = { Text("此操作不可撤销") },
+            text = {
+                Text(
+                    "再次确认：所有人物、提醒和照片都将被永久删除。\n\n" +
+                        "建议先在「导出」中保存一份备份。",
+                    color = WarmJournalColors.Primary
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearStep2 = false
+                        viewModel.clearAllData()
+                    }
+                ) {
+                    Text(
+                        "永久删除",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearStep2 = false }) { Text("取消") }
+            }
+        )
+    }
+
+    // 清除结果
+    when (val cs = clearState) {
+        ClearState.Idle, ClearState.Running -> Unit
+        is ClearState.Success -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.clearClearState() },
+                title = { Text("已清除") },
+                text = {
+                    Text(
+                        "已删除：\n" +
+                            "· ${cs.summary.peopleDeleted} 位人物\n" +
+                            "· ${cs.summary.remindersDeleted} 条提醒\n" +
+                            "· ${cs.summary.photosDeleted} 张照片\n\n" +
+                            "应用将回到初始状态。"
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearClearState() }) { Text("好的") }
+                }
+            )
+        }
+        is ClearState.Failure -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.clearClearState() },
+                title = { Text("清除失败") },
+                text = { Text("错误：${cs.error}") },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearClearState() }) { Text("好的") }
+                }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DataManageBottomSheet(
+    onExport: () -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            Text(
+                text = "数据管理",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Text(
+                text = "选择如何处理你的数据",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // 导出数据
+            DataManageAction(
+                icon = Icons.Filled.FileDownload,
+                tint = WarmJournalColors.Primary,
+                title = "导出数据",
+                subtitle = "保存一份 JSON 备份到下载目录",
+                onClick = {
+                    scope.launch { sheetState.hide() }
+                    onExport()
+                }
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // 清除数据
+            DataManageAction(
+                icon = Icons.Filled.DeleteSweep,
+                tint = MaterialTheme.colorScheme.error,
+                title = "清除所有数据",
+                subtitle = "永久删除人物、提醒和照片（不可撤销）",
+                onClick = {
+                    scope.launch { sheetState.hide() }
+                    onClear()
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun DataManageAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: Color,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(vertical = 12.dp, horizontal = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(tint.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

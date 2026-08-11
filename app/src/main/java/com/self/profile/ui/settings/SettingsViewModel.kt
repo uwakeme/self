@@ -2,6 +2,7 @@ package com.self.profile.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.self.profile.data.backup.ClearSummary
 import com.self.profile.data.backup.DataExporter
 import com.self.profile.data.datastore.SettingsDataStore
 import com.self.profile.data.repository.PersonRepository
@@ -38,6 +39,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _exportState = MutableStateFlow<ExportState>(ExportState.Idle)
     val exportState: StateFlow<ExportState> = _exportState.asStateFlow()
+
+    private val _clearState = MutableStateFlow<ClearState>(ClearState.Idle)
+    val clearState: StateFlow<ClearState> = _clearState.asStateFlow()
 
     private val today = LocalDate.now().toEpochDay()
 
@@ -121,6 +125,30 @@ class SettingsViewModel @Inject constructor(
     fun clearExportState() {
         _exportState.value = ExportState.Idle
     }
+
+    // ====== 数据清空 ======
+
+    /**
+     * 触发清空所有用户数据。完成后 [clearState] 会变成 Success/Failure。
+     *
+     * 调用方在收到 Success 后应当再调 [clearClearState] 把状态重置回 Idle，
+     * 否则 UI 会一直显示结果对话框。
+     */
+    fun clearAllData() {
+        viewModelScope.launch {
+            _clearState.value = ClearState.Running
+            try {
+                val summary = dataExporter.clearAllData()
+                _clearState.value = ClearState.Success(summary)
+            } catch (e: Exception) {
+                _clearState.value = ClearState.Failure(e.message ?: "未知错误")
+            }
+        }
+    }
+
+    fun clearClearState() {
+        _clearState.value = ClearState.Idle
+    }
 }
 
 /**
@@ -131,6 +159,16 @@ sealed interface ExportState {
     data object Running : ExportState
     data class Success(val path: String) : ExportState
     data class Failure(val error: String) : ExportState
+}
+
+/**
+ * 清除状态机。
+ */
+sealed interface ClearState {
+    data object Idle : ClearState
+    data object Running : ClearState
+    data class Success(val summary: ClearSummary) : ClearState
+    data class Failure(val error: String) : ClearState
 }
 
 data class SettingsUiState(

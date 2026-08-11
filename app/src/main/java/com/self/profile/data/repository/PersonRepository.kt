@@ -61,6 +61,9 @@ class PersonRepository @Inject constructor(
 
     suspend fun delete(id: String) = dao.deleteById(id)
 
+    /** 清空所有人物（含自己）。供"数据管理 - 清除"使用。 */
+    suspend fun deleteAll() = dao.deleteAll()
+
     suspend fun isEmpty(): Boolean = dao.count() == 0
 
     // ====== 转换层 ======
