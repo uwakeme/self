@@ -34,12 +34,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.self.profile.domain.model.RepeatRule
@@ -231,7 +228,7 @@ fun HomeScreen(
             }
         }
 
-        // 本月重要日子（Phase 3.3：日历条 + 事件列表）
+        // 本月重要日子（事件列表；不再展示整月日历条）
         Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
             SectionCard(title = "本月重要日子") {
                 if (state.monthEvents.isEmpty()) {
@@ -242,41 +239,33 @@ fun HomeScreen(
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                 } else {
-                    val today = LocalDate.now()
-                    MonthStrip(
-                        daysInMonth = today.lengthOfMonth(),
-                        today = today,
-                        eventsByDay = state.monthEvents.groupBy { it.date.dayOfMonth },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    state.monthEvents.take(3).forEach { event ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .background(ColorFamily, CircleShape)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = "${event.date.monthValue}月${event.date.dayOfMonth}日" +
-                                    if (event.reminder.isLunar && event.reminder.repeat == RepeatRule.YEARLY) {
-                                        "（${LunarHelper.lunarLabel(event.date)}）"
-                                    } else "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = event.reminder.title,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        state.monthEvents.forEach { event ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .background(ColorFamily, CircleShape)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    text = "${event.date.monthValue}月${event.date.dayOfMonth}日" +
+                                        if (event.reminder.isLunar && event.reminder.repeat == RepeatRule.YEARLY) {
+                                            "（${LunarHelper.lunarLabel(event.date)}）"
+                                        } else "",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = WarmJournalColors.PrimaryDarker
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    text = event.reminder.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
@@ -353,55 +342,6 @@ private fun RelationshipDonut(counts: RelationshipCounts, modifier: Modifier = M
                     topLeft = topLeft, size = arcSize
                 )
                 start += sweep
-            }
-        }
-    }
-}
-
-/**
- * 本月日历条（Phase 3.3）：每天一格，今天高亮，有提醒的日子下方画点。
- */
-@Composable
-private fun MonthStrip(
-    daysInMonth: Int,
-    today: LocalDate,
-    eventsByDay: Map<Int, List<com.self.profile.ui.home.MonthEvent>>,
-    modifier: Modifier = Modifier
-) {
-    val textMeasurer = rememberTextMeasurer()
-    Canvas(modifier.height(56.dp)) {
-        val cellW = size.width / daysInMonth
-        val labelStyle = TextStyle(fontSize = 9.sp, color = WarmJournalColors.TextSecondary)
-        val todayStyle = TextStyle(fontSize = 9.sp, color = WarmJournalColors.PrimaryDarker)
-        repeat(daysInMonth) { i ->
-            val day = i + 1
-            val cx = cellW * i + cellW / 2
-            val measured = textMeasurer.measure(day.toString(), if (day == today.dayOfMonth) todayStyle else labelStyle)
-            drawText(
-                measured,
-                topLeft = Offset(cx - measured.size.width / 2f, 4.dp.toPx())
-            )
-            if (day == today.dayOfMonth) {
-                drawCircle(
-                    color = WarmJournalColors.PrimaryDarker,
-                    radius = 1.5.dp.toPx(),
-                    center = Offset(cx, 18.dp.toPx())
-                )
-            }
-            val evs = eventsByDay[day]
-            if (!evs.isNullOrEmpty()) {
-                drawCircle(
-                    color = WarmJournalColors.Primary,
-                    radius = 2.5.dp.toPx(),
-                    center = Offset(cx, size.height - 10.dp.toPx())
-                )
-                if (evs.size >= 2) {
-                    drawCircle(
-                        color = WarmJournalColors.Primary,
-                        radius = 2.5.dp.toPx(),
-                        center = Offset(cx, size.height - 4.dp.toPx())
-                    )
-                }
             }
         }
     }
