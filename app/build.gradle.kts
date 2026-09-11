@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -22,6 +24,21 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    // Release 签名从环境变量读（勿提交 keystore）：
+    //   SELF_RELEASE_STORE_FILE / SELF_RELEASE_STORE_PASSWORD / SELF_RELEASE_KEY_ALIAS / SELF_RELEASE_KEY_PASSWORD
+    // 未配置时 assembleRelease 产出 unsigned APK，不阻塞构建。
+    signingConfigs {
+        create("release") {
+            val storeFileEnv = System.getenv("SELF_RELEASE_STORE_FILE")
+            if (storeFileEnv != null && File(storeFileEnv).exists()) {
+                storeFile = File(storeFileEnv)
+                storePassword = System.getenv("SELF_RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("SELF_RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("SELF_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -30,6 +47,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
         }
         debug {
             isMinifyEnabled = false
