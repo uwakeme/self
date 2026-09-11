@@ -21,4 +21,8 @@
     <string name="notif_channel_reminder_id">reminder_channel</string>
     <string name="notif_channel_reminder_name">生日纪念日提醒</string>
     <string name="notif_channel_reminder_desc">准时提醒重要的日子</string>
+
+    <!-- 桌面小组件 -->
+    <string name="widget_title">近期提醒</string>
+    <string name="widget_no_reminders">暂无近期提醒</string>
 </resources>

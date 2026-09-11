@@ -43,6 +43,12 @@ class SelfApp : Application(), Configuration.Provider {
     @Inject
     lateinit var recycleBinJanitor: RecycleBinJanitor
 
+    @Inject
+    lateinit var personRepo: com.self.profile.data.repository.PersonRepository
+
+    @Inject
+    lateinit var reminderRepo: com.self.profile.data.repository.ReminderRepository
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val workManagerConfiguration: Configuration
@@ -57,6 +63,10 @@ class SelfApp : Application(), Configuration.Provider {
         appScope.launch { seedData.seedIfEmpty() }
         appScope.launch { recycleBinJanitor.purgeExpired() }
         appScope.launch { reminderReregistrator.reregisterAll() }
+        // 冷启动刷新桌面小组件（系统另有 30 分钟周期刷新兜底）
+        appScope.launch {
+            com.self.profile.widget.RecentWidgetUpdater.update(applicationContext, personRepo, reminderRepo)
+        }
     }
 
     private fun createNotificationChannels() {
