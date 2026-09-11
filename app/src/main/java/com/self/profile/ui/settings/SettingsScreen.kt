@@ -137,7 +137,7 @@ fun SettingsScreen(
             )
 
             // 统计概览
-            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                 SectionCard(title = null) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -153,7 +153,7 @@ fun SettingsScreen(
 
             // 即将到来
             if (state.upcoming.isNotEmpty()) {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                     SectionCard(title = "即将到来") {
                         Column {
                             state.upcoming.take(5).forEach { item ->
@@ -166,7 +166,7 @@ fun SettingsScreen(
             }
 
             // 5 Tab 过滤
-            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                 SectionCard(title = "全部提醒") {
                     SecondaryTabRow(
                         selectedTabIndex = state.currentTab.ordinal,
@@ -225,7 +225,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // 快捷设置
-            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                 SectionCard(title = "快捷设置") {
                     Column {
                         SettingRow("默认提前天数", "${state.settings.defaultAdvanceDays} 天")
@@ -243,7 +243,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // 应用设置
-            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                 SectionCard(title = "应用设置") {
                     Column {
                         SettingRow(
@@ -289,7 +289,7 @@ fun SettingsScreen(
             Spacer(Modifier.height(8.dp))
 
             // 关于
-            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                 SectionCard(title = "关于") {
                     Column {
                         SettingRow("应用名称", "自我档案与人物图鉴")

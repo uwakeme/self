@@ -292,7 +292,7 @@ private fun SectionWrap(
     action: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
-    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+    Box(modifier = Modifier.padding(horizontal = 20.dp)) {
         SectionCard(title = title, action = action, content = content)
     }
 }
