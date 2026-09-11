@@ -113,4 +113,13 @@ dependencies {
 
     // 农历
     implementation(libs.lunar.java)
+
+    // 单元测试（JUnit 5 + mockk；import 用 org.junit.jupiter.api.Test，禁混 JUnit 4）
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testImplementation(libs.mockk)
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }
