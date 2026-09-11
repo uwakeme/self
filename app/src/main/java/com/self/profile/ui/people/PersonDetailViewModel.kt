@@ -13,16 +13,23 @@ import com.self.profile.domain.model.Note
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.Photo
 import com.self.profile.domain.model.Reminder
+import com.self.profile.domain.model.ReminderType
+import com.self.profile.domain.model.RepeatRule
 import com.self.profile.domain.model.WishItem
 import com.self.profile.ui.navigation.Route
 import com.self.profile.util.PhotoStorage
+import com.self.profile.util.ReminderCalc
+import com.self.profile.work.ReminderScheduler
+import android.content.Context
 import android.net.Uri
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
 
@@ -31,13 +38,15 @@ import javax.inject.Inject
  *
  * 阶段 1：只读
  * 阶段 3：编辑（14 模块 + 互动记录 + 共同点）+ 删除
+ * Phase 2：相关提醒展示 / 增改删（软删进回收站）+ 愿望勾选
  */
 @HiltViewModel
 class PersonDetailViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val personRepo: PersonRepository,
     private val reminderRepo: ReminderRepository,
-    private val photoStorage: PhotoStorage
+    private val photoStorage: PhotoStorage,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val personId: String = savedState.get<String>(Route.PersonDetail.ARG_PERSON_ID).orEmpty()
@@ -192,6 +201,14 @@ class PersonDetailViewModel @Inject constructor(
         }
     }
 
+    fun toggleWishItem(id: String) {
+        updatePerson { p ->
+            p.copy(wishList = p.wishList.map {
+                if (it.id == id) it.copy(completed = !it.completed) else it
+            })
+        }
+    }
+
     fun removeWishItem(id: String) {
         updatePerson { p -> p.copy(wishList = p.wishList.filter { it.id != id }) }
     }
@@ -254,6 +271,71 @@ class PersonDetailViewModel @Inject constructor(
             p.copy(photos = p.photos.map {
                 if (it.id == photoId) it.copy(description = description.takeIf { d -> d.isNotBlank() }) else it
             })
+        }
+    }
+
+    // ====== 相关提醒 ======
+
+    /**
+     * 新增/更新该人物的提醒并立即调度。isLunar 仅 YEARLY 生效（按农历逐年换算公历）。
+     */
+    fun saveReminder(
+        existingId: String?,
+        type: ReminderType,
+        title: String,
+        date: LocalDate,
+        advanceDays: Int,
+        reminderTime: String,
+        repeat: RepeatRule,
+        notes: String?,
+        isLunar: Boolean
+    ) {
+        if (title.isBlank()) return
+        val personId = (state.value as? PersonDetailUiState.Loaded)?.person?.id ?: return
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val reminder = Reminder(
+                id = existingId ?: UUID.randomUUID().toString(),
+                personId = personId,
+                type = type,
+                title = title.trim(),
+                date = date.toEpochDay(),
+                advanceDays = advanceDays.coerceIn(0, 30),
+                reminderTime = reminderTime,
+                repeat = repeat,
+                enabled = true,
+                notes = notes?.takeIf { it.isNotBlank() },
+                triggeredAt = null,
+                createdAt = now,
+                updatedAt = now,
+                isLunar = isLunar
+            )
+            reminderRepo.upsert(reminder)
+            ReminderCalc.nextTriggerMillis(reminder)?.let {
+                ReminderScheduler.scheduleReminder(appContext, reminder.id, it)
+            } ?: ReminderScheduler.cancel(appContext, reminder.id)
+        }
+    }
+
+    fun toggleReminder(reminderId: String, enabled: Boolean) {
+        viewModelScope.launch {
+            reminderRepo.setEnabled(reminderId, enabled, System.currentTimeMillis())
+            val reminder = reminderRepo.getById(reminderId) ?: return@launch
+            if (enabled) {
+                ReminderCalc.nextTriggerMillis(reminder)?.let {
+                    ReminderScheduler.scheduleReminder(appContext, reminderId, it)
+                }
+            } else {
+                ReminderScheduler.cancel(appContext, reminderId)
+            }
+        }
+    }
+
+    /** 删除提醒：软删进回收站，同时取消调度 */
+    fun deleteReminder(reminder: Reminder) {
+        viewModelScope.launch {
+            ReminderScheduler.cancel(appContext, reminder.id)
+            reminderRepo.softDelete(reminder.id, System.currentTimeMillis())
         }
     }
 }

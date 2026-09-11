@@ -11,7 +11,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.self.profile.domain.model.AppSettings
 import com.self.profile.domain.model.DarkModePref
-import com.self.profile.domain.model.ExportFormat
 import com.self.profile.domain.model.FontSizePref
 import com.self.profile.domain.model.GallerySortRule
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -45,7 +44,6 @@ class SettingsDataStore @Inject constructor(
             showLunarBirthday = p[Keys.SHOW_LUNAR] ?: false,
             darkMode = DarkModePref.fromStorage(p[Keys.DARK_MODE] ?: "off"),
             fontScale = FontSizePref.fromStorage(p[Keys.FONT_SCALE] ?: "standard"),
-            dataExportFormat = ExportFormat.fromStorage(p[Keys.EXPORT_FORMAT] ?: "json"),
             lastBackupTime = p[Keys.LAST_BACKUP],
             selfProfileModuleOrder = p[Keys.SELF_MODULE_ORDER]
                 ?.split(",")?.mapNotNull { it.toIntOrNull() }
@@ -94,7 +92,6 @@ class SettingsDataStore @Inject constructor(
             it[Keys.SHOW_LUNAR] = other.showLunarBirthday
             it[Keys.DARK_MODE] = other.darkMode.storage
             it[Keys.FONT_SCALE] = other.fontScale.storage
-            it[Keys.EXPORT_FORMAT] = other.dataExportFormat.storage
             it[Keys.SELF_MODULE_ORDER] = other.selfProfileModuleOrder.joinToString(",")
             it[Keys.PERSON_MODULE_ORDER] = other.personDetailModuleOrder.joinToString(",")
             it[Keys.GALLERY_SORT] = other.gallerySortRule.storage
@@ -114,7 +111,6 @@ class SettingsDataStore @Inject constructor(
         val SHOW_LUNAR = booleanPreferencesKey("show_lunar_birthday")
         val DARK_MODE = stringPreferencesKey("dark_mode")
         val FONT_SCALE = stringPreferencesKey("font_scale")
-        val EXPORT_FORMAT = stringPreferencesKey("export_format")
         val LAST_BACKUP = longPreferencesKey("last_backup_time")
         val SELF_MODULE_ORDER = stringPreferencesKey("self_module_order")
         val PERSON_MODULE_ORDER = stringPreferencesKey("person_module_order")

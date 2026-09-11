@@ -14,7 +14,6 @@ data class AppSettings(
     val showLunarBirthday: Boolean = false,
     val darkMode: DarkModePref = DarkModePref.OFF,
     val fontScale: FontSizePref = FontSizePref.STANDARD,
-    val dataExportFormat: ExportFormat = ExportFormat.JSON,
     val lastBackupTime: Long? = null,
     val selfProfileModuleOrder: List<Int> = defaultSelfModuleOrder,
     val personDetailModuleOrder: List<Int> = defaultPersonModuleOrder,
@@ -51,17 +50,6 @@ enum class FontSizePref(val storage: String) {
     companion object {
         fun fromStorage(s: String): FontSizePref =
             values().firstOrNull { it.storage == s } ?: STANDARD
-    }
-}
-
-@Serializable
-enum class ExportFormat(val storage: String) {
-    JSON("json"),
-    CSV("csv");
-
-    companion object {
-        fun fromStorage(s: String): ExportFormat =
-            values().firstOrNull { it.storage == s } ?: JSON
     }
 }
 

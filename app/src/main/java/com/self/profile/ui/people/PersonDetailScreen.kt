@@ -31,6 +31,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,6 +62,7 @@ import com.self.profile.domain.model.LifeJourneyEntry
 import com.self.profile.domain.model.Note
 import com.self.profile.domain.model.PersonalBackground
 import com.self.profile.domain.model.Person
+import com.self.profile.domain.model.Reminder
 import com.self.profile.domain.model.SizeInfo
 import com.self.profile.domain.model.WishItem
 import com.self.profile.ui.components.Avatar
@@ -71,8 +74,10 @@ import com.self.profile.ui.components.dialogs.ChoicePickerDialog
 import com.self.profile.ui.components.dialogs.DatePickerSheet
 import com.self.profile.ui.components.dialogs.EditTextAreaDialog
 import com.self.profile.ui.components.dialogs.EditTextDialog
+import com.self.profile.ui.reminder.ReminderEditorDialog
 import com.self.profile.ui.theme.WarmJournalColors
 import com.self.profile.util.LunarHelper
+import com.self.profile.util.ReminderCalc
 import com.self.profile.util.parseHexColor
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -107,6 +112,7 @@ fun PersonDetailScreen(
         }
         is PersonDetailUiState.Loaded -> PersonContent(
             person = s.person,
+            reminders = s.reminders,
             vm = viewModel,
             onBack = onBack
         )
@@ -114,8 +120,16 @@ fun PersonDetailScreen(
 }
 
 @Composable
-private fun PersonContent(person: Person, vm: PersonDetailViewModel, onBack: () -> Unit) {
+private fun PersonContent(
+    person: Person,
+    reminders: List<Reminder>,
+    vm: PersonDetailViewModel,
+    onBack: () -> Unit
+) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showReminderEditor by remember { mutableStateOf(false) }
+    var editingReminder by remember { mutableStateOf<Reminder?>(null) }
+    var pendingDeleteReminder by remember { mutableStateOf<Reminder?>(null) }
     val lazyListState = rememberLazyListState()
     val showStickyHeader by remember {
         derivedStateOf { lazyListState.firstVisibleItemIndex > 0 }
@@ -133,6 +147,48 @@ private fun PersonContent(person: Person, vm: PersonDetailViewModel, onBack: () 
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("取消") }
+            }
+        )
+    }
+
+    // 添加相关提醒（绑定当前人物）
+    if (showReminderEditor) {
+        ReminderEditorDialog(
+            existing = null,
+            people = listOf(person),
+            onDismiss = { showReminderEditor = false },
+            onSave = { _, type, title, date, adv, time, repeat, notes, isLunar ->
+                vm.saveReminder(null, type, title, date, adv, time, repeat, notes, isLunar)
+            }
+        )
+    }
+    // 编辑相关提醒
+    editingReminder?.let { target ->
+        ReminderEditorDialog(
+            existing = target,
+            people = listOf(person),
+            onDismiss = { editingReminder = null },
+            onSave = { _, type, title, date, adv, time, repeat, notes, isLunar ->
+                vm.saveReminder(
+                    target.id, type, title, date, adv, time, repeat, notes, isLunar
+                )
+            }
+        )
+    }
+    // 删除提醒确认
+    pendingDeleteReminder?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteReminder = null },
+            title = { Text("删除提醒") },
+            text = { Text("确定删除「${target.title}」？\n\n删除后可在「设置 - 回收站」中恢复（保留 30 天）。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteReminder(target)
+                    pendingDeleteReminder = null
+                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteReminder = null }) { Text("取消") }
             }
         )
     }
@@ -203,6 +259,17 @@ private fun PersonContent(person: Person, vm: PersonDetailViewModel, onBack: () 
                 item { SectionWrap("纪念日", action = { AddAnniversaryTrigger(vm) }) {
                     AnniversariesSection(person.anniversaries)
                 } }
+                item { Spacer(Modifier.height(8.dp)) }
+                item {
+                    SectionWrap("相关提醒", action = { showReminderEditor = true }) {
+                        RemindersSection(
+                            reminders = reminders,
+                            onEdit = { editingReminder = it },
+                            onToggle = { id, enabled -> vm.toggleReminder(id, enabled) },
+                            onDelete = { pendingDeleteReminder = it }
+                        )
+                    }
+                }
                 item { Spacer(Modifier.height(32.dp)) }
             }
 
@@ -786,7 +853,7 @@ private fun WishListSection(list: List<WishItem>, vm: PersonDetailViewModel) {
         list.forEach { item ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CheckboxCircle(checked = item.completed, onClick = {
-                    // 人物版本暂不允许 toggle（避免 onClick 跳到 Self VM）
+                    vm.toggleWishItem(item.id)
                 })
                 Spacer(Modifier.width(8.dp))
                 Text(
@@ -1119,6 +1186,69 @@ private fun AnniversariesSection(list: List<Anniversary>) {
                 }
                 IconButton(onClick = { }) {
                     Icon(Icons.Filled.Notifications, contentDescription = "提醒", tint = WarmJournalColors.Primary)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 相关提醒：展示该人物关联的提醒，可编辑 / 开关 / 删除（Phase 2 补完，
+ * 此前 ViewModel 里 combine 了 reminders 但 UI 从未渲染）。
+ */
+@Composable
+private fun RemindersSection(
+    reminders: List<Reminder>,
+    onEdit: (Reminder) -> Unit,
+    onToggle: (String, Boolean) -> Unit,
+    onDelete: (Reminder) -> Unit
+) {
+    if (reminders.isEmpty()) {
+        EmptyState(title = "暂无相关提醒", description = "点击右上角 + 为他/她添加生日或纪念日提醒")
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        reminders.forEach { r ->
+            val nextDate = ReminderCalc.nextOccurrenceDate(r)
+            val days = nextDate.toEpochDay() - LocalDate.now().toEpochDay()
+            val countdown = when {
+                days == 0L -> "今天"
+                days > 0 -> "还有${days}天"
+                else -> "已过${-days}天"
+            }
+            val dateText = if (r.isLunar && r.repeat == com.self.profile.domain.model.RepeatRule.YEARLY) {
+                LunarHelper.lunarLabel(nextDate)
+            } else {
+                nextDate.format(DateTimeFormatter.ofPattern("M月d日"))
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f).clickable { onEdit(r) }) {
+                    Text(
+                        text = r.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${r.type.label} · $dateText · $countdown · 提前${r.advanceDays}天 ${r.reminderTime}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = r.enabled,
+                    onCheckedChange = { onToggle(r.id, it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = WarmJournalColors.Primary,
+                        checkedTrackColor = WarmJournalColors.PrimaryLightest
+                    )
+                )
+                IconButton(onClick = { onDelete(r) }, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = "删除提醒",
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(14.dp)
+                    )
                 }
             }
         }
