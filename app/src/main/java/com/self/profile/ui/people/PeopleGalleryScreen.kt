@@ -102,18 +102,16 @@ fun PeopleGalleryScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            GalleryBanner()
+            GalleryBanner(total = state.total)
             SearchBar(
                 query = state.query,
                 onQueryChange = viewModel::setQuery
             )
-            FilterRow(
-                selected = state.filter,
-                onSelect = viewModel::setFilter
-            )
-            ClosenessFilterRow(
-                selected = state.closenessFilter,
-                onSelect = viewModel::setClosenessFilter
+            FilterChipsRow(
+                selectedType = state.filter,
+                onTypeSelect = viewModel::setFilter,
+                selectedCloseness = state.closenessFilter,
+                onClosenessSelect = viewModel::setClosenessFilter
             )
             if (state.availableTags.isNotEmpty()) {
                 TagFilterRow(
@@ -254,11 +252,11 @@ private fun ReorderablePersonRow(
 }
 
 @Composable
-private fun GalleryBanner() {
+private fun GalleryBanner(total: Int) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp)
+            .height(64.dp)
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
@@ -268,21 +266,23 @@ private fun GalleryBanner() {
                 )
             )
     ) {
-        Column(
+        Row(
+            verticalAlignment = Alignment.Bottom,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(20.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
             Text(
                 text = "人物图鉴",
-                style = MaterialTheme.typography.displaySmall,
+                style = MaterialTheme.typography.titleLarge,
                 color = WarmJournalColors.TextInverse
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
-                text = "每一段相遇，都值得被记住",
-                style = MaterialTheme.typography.bodyMedium,
-                color = WarmJournalColors.TextInverse.copy(alpha = 0.85f)
+                text = "$total 位",
+                style = MaterialTheme.typography.bodySmall,
+                color = WarmJournalColors.TextInverse.copy(alpha = 0.85f),
+                modifier = Modifier.padding(bottom = 2.dp)
             )
         }
     }
@@ -318,26 +318,33 @@ private fun SearchBar(
     )
 }
 
+/**
+ * 关系类型 + 亲密度合并为一行横向滚动（中间竖线分隔两组），压缩头部高度。
+ */
 @Composable
-private fun FilterRow(
-    selected: RelationshipType?,
-    onSelect: (RelationshipType?) -> Unit
+private fun FilterChipsRow(
+    selectedType: RelationshipType?,
+    onTypeSelect: (RelationshipType?) -> Unit,
+    selectedCloseness: ClosenessLevel?,
+    onClosenessSelect: (ClosenessLevel?) -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(vertical = 2.dp)
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         FilterChip(
-            selected = selected == null,
-            onClick = { onSelect(null) },
+            selected = selectedType == null,
+            onClick = { onTypeSelect(null) },
             label = { Text("全部") }
         )
         RelationshipType.values().forEach { type ->
             FilterChip(
-                selected = selected == type,
-                onClick = { onSelect(type) },
+                selected = selectedType == type,
+                onClick = { onTypeSelect(type) },
                 label = { Text(type.label) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = WarmJournalColors.PrimaryLightest,
@@ -345,29 +352,16 @@ private fun FilterRow(
                 )
             )
         }
-    }
-}
-
-@Composable
-private fun ClosenessFilterRow(
-    selected: ClosenessLevel?,
-    onSelect: (ClosenessLevel?) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 0.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        FilterChip(
-            selected = selected == null,
-            onClick = { onSelect(null) },
-            label = { Text("亲密度") }
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(22.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant)
         )
         ClosenessLevel.values().forEach { level ->
             FilterChip(
-                selected = selected == level,
-                onClick = { onSelect(if (selected == level) null else level) },
+                selected = selectedCloseness == level,
+                onClick = { onClosenessSelect(if (selectedCloseness == level) null else level) },
                 label = { Text(level.label) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = WarmJournalColors.PrimaryLightest,
