@@ -19,7 +19,9 @@ data class Reminder(
     val notes: String? = null,
     val triggeredAt: Long? = null,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val isLunar: Boolean = false,
+    val deletedAt: Long? = null
 )
 
 @Serializable

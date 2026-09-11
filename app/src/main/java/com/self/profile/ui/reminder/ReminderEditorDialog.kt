@@ -38,8 +38,10 @@ import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.Reminder
 import com.self.profile.domain.model.ReminderType
 import com.self.profile.domain.model.RepeatRule
+import com.self.profile.ui.components.dialogs.ChoicePickerDialog
 import com.self.profile.ui.components.dialogs.DatePickerSheet
 import com.self.profile.ui.components.dialogs.ReminderFormDialog
+import com.self.profile.util.LunarHelper
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -53,8 +55,11 @@ import java.time.format.DateTimeFormatter
  * 1. 关联人物（可选，chip 横滑列表）
  * 2. 类型（3 chip：生日/纪念日/自定义）
  * 3. 标题
- * 4. 日期
+ * 4. 日期（公历 DatePicker / 农历月+日选择，随农历开关切换）
  * 5. 高级设置（点击展开，调用 ReminderFormDialog）
+ *
+ * 农历开关只在 YEARLY 重复下有意义；保存时把农历月日换算成"下一个公历日"存入 date，
+ * 调度时 ReminderCalc 再按农历逐年重算。
  */
 @Composable
 fun ReminderEditorDialog(
@@ -69,7 +74,8 @@ fun ReminderEditorDialog(
         advanceDays: Int,
         reminderTime: String,
         repeat: RepeatRule,
-        notes: String?
+        notes: String?,
+        isLunar: Boolean
     ) -> Unit
 ) {
     var personId by remember { mutableStateOf(existing?.personId) }
@@ -78,12 +84,27 @@ fun ReminderEditorDialog(
     var date by remember { mutableStateOf(
         existing?.date?.let { LocalDate.ofEpochDay(it) } ?: LocalDate.now().plusDays(7)
     ) }
+    var isLunar by remember {
+        mutableStateOf(existing?.isLunar ?: false)
+    }
+    var lunarMonth by remember {
+        mutableStateOf(
+            existing?.date?.let { LunarHelper.solarToLunarMonthDay(LocalDate.ofEpochDay(it)).first } ?: 1
+        )
+    }
+    var lunarDay by remember {
+        mutableStateOf(
+            existing?.date?.let { LunarHelper.solarToLunarMonthDay(LocalDate.ofEpochDay(it)).second } ?: 1
+        )
+    }
     var advanceDays by remember { mutableStateOf(existing?.advanceDays ?: 3) }
     var reminderTime by remember { mutableStateOf(existing?.reminderTime ?: "08:00") }
     var repeat by remember { mutableStateOf(existing?.repeat ?: RepeatRule.YEARLY) }
     var notes by remember { mutableStateOf(existing?.notes ?: "") }
 
     var showDatePicker by remember { mutableStateOf(false) }
+    var showLunarMonthPicker by remember { mutableStateOf(false) }
+    var showLunarDayPicker by remember { mutableStateOf(false) }
     var showAdvanced by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy年M月d日") }
@@ -92,8 +113,40 @@ fun ReminderEditorDialog(
     if (showDatePicker) {
         DatePickerSheet(
             initialDate = date,
-            onConfirm = { d -> date = d; showDatePicker = false },
+            onConfirm = { d ->
+                date = d
+                // 从公历切农历时，以所选公历日的农历月日为起点
+                val (m, d2) = LunarHelper.solarToLunarMonthDay(d)
+                lunarMonth = m
+                lunarDay = d2
+                showDatePicker = false
+            },
             onDismiss = { showDatePicker = false }
+        )
+    }
+    if (showLunarMonthPicker) {
+        ChoicePickerDialog(
+            title = "农历月份",
+            options = LunarHelper.lunarMonths.toList(),
+            selected = LunarHelper.lunarMonths[lunarMonth - 1],
+            onConfirm = { picked ->
+                lunarMonth = LunarHelper.lunarMonths.indexOf(picked) + 1
+                showLunarMonthPicker = false
+                showLunarDayPicker = true
+            },
+            onDismiss = { showLunarMonthPicker = false }
+        )
+    }
+    if (showLunarDayPicker) {
+        ChoicePickerDialog(
+            title = "农历日期",
+            options = LunarHelper.lunarDays.toList(),
+            selected = LunarHelper.lunarDays[lunarDay - 1],
+            onConfirm = { picked ->
+                lunarDay = LunarHelper.lunarDays.indexOf(picked) + 1
+                showLunarDayPicker = false
+            },
+            onDismiss = { showLunarDayPicker = false }
         )
     }
     if (showAdvanced) {
@@ -171,18 +224,44 @@ fun ReminderEditorDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 日期
+                // 日期（农历开关：仅每年重复有意义）
                 FieldLabel("日期")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    FilterChip(
+                        selected = isLunar,
+                        onClick = { isLunar = !isLunar },
+                        label = { Text("农历") },
+                        leadingIcon = if (isLunar) {
+                            { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.height(16.dp)) }
+                        } else null
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (repeat == RepeatRule.YEARLY) "农历生日按每年农历换算公历提醒"
+                        else "农历仅在「每年」重复时生效",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { showDatePicker = true }
+                        .clickable {
+                            if (isLunar) showLunarMonthPicker = true else showDatePicker = true
+                        }
                         .padding(horizontal = 12.dp, vertical = 12.dp)
                 ) {
                     Text(
-                        text = date.format(dateFormatter),
+                        text = if (isLunar) {
+                            "农历${LunarHelper.lunarMonths[lunarMonth - 1]}${LunarHelper.lunarDays[lunarDay - 1]}"
+                        } else {
+                            date.format(dateFormatter)
+                        },
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -220,9 +299,13 @@ fun ReminderEditorDialog(
         confirmButton = {
             TextButton(
                 onClick = {
+                    // 农历：存"下一个农历对应公历日"，调度时逐年重算
+                    val storedDate = if (isLunar) {
+                        LunarHelper.nextLunarDateOnOrAfter(lunarMonth, lunarDay, LocalDate.now())
+                    } else date
                     onSave(
-                        personId, type, title, date,
-                        advanceDays, reminderTime, repeat, notes
+                        personId, type, title, storedDate,
+                        advanceDays, reminderTime, repeat, notes, isLunar
                     )
                     onDismiss()
                 },

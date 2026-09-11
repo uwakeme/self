@@ -27,8 +27,8 @@ object DatabaseModule {
             AppDatabase::class.java,
             AppDatabase.DB_NAME
         )
-            // MVP 阶段：升级时清空重建
-            .fallbackToDestructiveMigration()
+            // v2 起正式迁移：不再破坏性清库，升版本必须配套新增 Migration
+            .addMigrations(AppDatabase.MIGRATION_1_2)
             .build()
 
     @Provides

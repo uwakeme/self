@@ -7,6 +7,7 @@ import com.self.profile.data.repository.PersonRepository
 import com.self.profile.data.repository.ReminderRepository
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.Reminder
+import com.self.profile.util.ReminderCalc
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,22 +29,27 @@ class HomeViewModel @Inject constructor(
     settingsStore: SettingsDataStore
 ) : ViewModel() {
 
-    private val today = LocalDate.now().toEpochDay()
-    private val upcomingRange = today..(today + 30)  // 近期 = 未来 30 天
+    private val today = LocalDate.now()
 
     val state: StateFlow<HomeUiState> = combine(
         personRepo.observeSelf(),
         personRepo.observeAll(),
-        reminderRepo.observeUpcoming(today, today + 30),
+        reminderRepo.observeEnabled(),
         settingsStore.settings
-    ) { self, allPeople, upcomingReminders, settings ->
+    ) { self, allPeople, enabledReminders, settings ->
         val others = allPeople.filter { !it.isSelf }
+        // 近期 = 下一次正日在未来 30 天内（农历 / 跨年提醒按重算日期过滤）
+        val upcoming = enabledReminders
+            .map { r -> r to ReminderCalc.nextOccurrenceDate(r, today) }
+            .filter { (_, d) -> d.toEpochDay() in today.toEpochDay()..(today.toEpochDay() + 30) }
+            .sortedBy { (_, d) -> d.toEpochDay() }
+            .map { (r, _) -> r }
         HomeUiState(
             nickname = settings.userNickname.takeIf { it.isNotBlank() } ?: "用户",
             avatarUrl = settings.userAvatar,
             fallbackColor = self?.avatarColor ?: "#C4785B",
             fallbackInitial = self?.avatarInitial ?: "我",
-            upcomingReminders = upcomingReminders.take(3),
+            upcomingReminders = upcoming.take(3),
             others = others,
             relationshipCounts = RelationshipCounts(
                 family = others.count { it.relationshipType.label == "家人" },

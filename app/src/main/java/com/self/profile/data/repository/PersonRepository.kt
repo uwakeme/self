@@ -20,6 +20,7 @@ import com.self.profile.domain.model.SizeInfo
 import com.self.profile.domain.model.WishItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.builtins.ListSerializer
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -66,6 +67,22 @@ class PersonRepository @Inject constructor(
 
     suspend fun isEmpty(): Boolean = dao.count() == 0
 
+    // ====== 回收站（软删除） ======
+
+    fun observeDeleted(): Flow<List<Person>> = dao.observeDeleted().map { it.map(::toDomain) }
+
+    fun countDeleted(): Flow<Int> = dao.countDeleted()
+
+    suspend fun softDelete(id: String, timestamp: Long) = dao.softDelete(id, timestamp)
+
+    suspend fun restore(id: String, timestamp: Long) = dao.restore(id, timestamp)
+
+    suspend fun purgeDeletedBefore(timestamp: Long): Int = dao.purgeDeletedBefore(timestamp)
+
+    /** 回收站彻底删除前取照片路径用 */
+    suspend fun getDeletedBefore(timestamp: Long): List<Person> =
+        dao.getDeletedBefore(timestamp).map(::toDomain)
+
     // ====== 转换层 ======
 
     private fun toDomain(e: PersonEntity): Person = Person(
@@ -94,9 +111,11 @@ class PersonRepository @Inject constructor(
         commonGrounds = decodeList(e.commonGroundsJson, CommonGround.serializer()),
         photos = decodeList(e.photosJson, Photo.serializer()),
         anniversaries = decodeList(e.anniversariesJson, Anniversary.serializer()),
+        tags = decodeList(e.tagsJson, String.serializer()),
         createdAt = e.createdAt,
         updatedAt = e.updatedAt,
-        lastViewedAt = e.lastViewedAt
+        lastViewedAt = e.lastViewedAt,
+        deletedAt = e.deletedAt
     )
 
     private fun toEntity(p: Person): PersonEntity = PersonEntity(
@@ -124,9 +143,11 @@ class PersonRepository @Inject constructor(
         commonGroundsJson = encodeList(p.commonGrounds, CommonGround.serializer()),
         photosJson = encodeList(p.photos, Photo.serializer()),
         anniversariesJson = encodeList(p.anniversaries, Anniversary.serializer()),
+        tagsJson = encodeList(p.tags, String.serializer()),
         createdAt = p.createdAt,
         updatedAt = p.updatedAt,
-        lastViewedAt = p.lastViewedAt
+        lastViewedAt = p.lastViewedAt,
+        deletedAt = p.deletedAt
     )
 
     private fun PersonalBackgroundEntity?.toDomain(): PersonalBackground =

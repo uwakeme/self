@@ -35,7 +35,9 @@ data class Person(
     val anniversaries: List<Anniversary> = emptyList(),
     val createdAt: Long,
     val updatedAt: Long,
-    val lastViewedAt: Long? = null
+    val lastViewedAt: Long? = null,
+    val tags: List<String> = emptyList(),
+    val deletedAt: Long? = null
 )
 
 @Serializable

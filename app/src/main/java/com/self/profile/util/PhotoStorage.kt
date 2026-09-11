@@ -56,6 +56,22 @@ class PhotoStorage @Inject constructor(
     }
 
     /**
+     * 把备份 zip 里的照片字节写入私有目录（文件名重新生成避免冲突），返回绝对路径。
+     * 失败返回 null（调用方按 null 跳过，url 保持原值成悬空引用，不影响导入其余数据）。
+     */
+    suspend fun saveFromBytes(fileName: String, bytes: ByteArray): String? = withContext(Dispatchers.IO) {
+        try {
+            val rawExt = fileName.substringAfterLast('.', "").lowercase()
+            val ext = if (rawExt in setOf("jpg", "jpeg", "png", "webp", "gif")) rawExt else "jpg"
+            val dest = File(photosDir(), "photo_${System.currentTimeMillis()}_${(0..9999).random()}.$ext")
+            dest.writeBytes(bytes)
+            dest.absolutePath
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
+    /**
      * 删除指定路径上的文件。失败静默（文件可能本来就不存在）。
      */
     fun delete(path: String) {

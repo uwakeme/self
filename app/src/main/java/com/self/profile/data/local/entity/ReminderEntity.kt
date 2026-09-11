@@ -58,5 +58,13 @@ data class ReminderEntity(
     val createdAt: Long,
 
     @ColumnInfo(name = "updated_at")
-    val updatedAt: Long
+    val updatedAt: Long,
+
+    /** 是否农历日期：YEARLY 重复时每年按农历换算当年公历再调度（农历生日每年公历漂移） */
+    @ColumnInfo(name = "is_lunar", defaultValue = "0")
+    val isLunar: Boolean = false,
+
+    /** 软删除时间（epoch millis）；null = 未删除 */
+    @ColumnInfo(name = "deleted_at")
+    val deletedAt: Long? = null
 )

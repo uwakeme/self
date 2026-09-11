@@ -99,7 +99,15 @@ data class PersonEntity(
     val updatedAt: Long,
 
     @ColumnInfo(name = "last_viewed_at")
-    val lastViewedAt: Long? = null
+    val lastViewedAt: Long? = null,
+
+    /** 软删除时间（epoch millis）；null = 未删除。回收站基于本列，30 天后由 Janitor 彻底清除。 */
+    @ColumnInfo(name = "deleted_at")
+    val deletedAt: Long? = null,
+
+    /** 自定义标签 JSON 数组（如 ["球友","书友"]），用于图鉴自定义分组筛选 */
+    @ColumnInfo(name = "tags_json", defaultValue = "[]")
+    val tagsJson: String = "[]"
 )
 
 data class PersonalBackgroundEntity(

@@ -18,7 +18,6 @@ import com.self.profile.domain.model.Reminder
 import com.self.profile.util.ReminderCalc
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import java.util.UUID
 
 /**
  * 触发提醒的 Worker。
@@ -36,7 +35,8 @@ class ReminderWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         val reminderId = inputData.getString(KEY_REMINDER_ID) ?: return Result.failure()
         val reminder = reminderRepo.getById(reminderId) ?: return Result.success()
-        if (!reminder.enabled) return Result.success()
+        // 已删除（回收站）或已关闭：不通知，也不再续排
+        if (!reminder.enabled || reminder.deletedAt != null) return Result.success()
 
         // 1. 弹通知
         showNotification(reminder)
@@ -103,9 +103,3 @@ class ReminderWorker @AssistedInject constructor(
         const val EXTRA_REMINDER_ID = "extra_reminder_id"
     }
 }
-
-/**
- * 占位用，实际由 ReminderRepository 内部的 toDomain 转换。
- */
-@Suppress("unused")
-private val uuid = UUID.randomUUID()

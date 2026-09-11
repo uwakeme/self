@@ -8,6 +8,7 @@ import android.os.Build
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.self.profile.data.repository.RecycleBinJanitor
 import com.self.profile.data.seed.SeedData
 import com.self.profile.work.NotificationChannels
 import com.self.profile.work.ReminderReregistrator
@@ -39,6 +40,9 @@ class SelfApp : Application(), Configuration.Provider {
     @Inject
     lateinit var reminderReregistrator: ReminderReregistrator
 
+    @Inject
+    lateinit var recycleBinJanitor: RecycleBinJanitor
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val workManagerConfiguration: Configuration
@@ -51,6 +55,7 @@ class SelfApp : Application(), Configuration.Provider {
         super.onCreate()
         createNotificationChannels()
         appScope.launch { seedData.seedIfEmpty() }
+        appScope.launch { recycleBinJanitor.purgeExpired() }
         appScope.launch { reminderReregistrator.reregisterAll() }
     }
 

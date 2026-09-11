@@ -124,7 +124,7 @@ private fun PersonContent(person: Person, vm: PersonDetailViewModel, onBack: () 
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("删除人物") },
-            text = { Text("确定删除「${person.name}」吗？相关提醒也会一并清除，操作不可撤销。") },
+            text = { Text("确定删除「${person.name}」吗？\n\n人物和关联提醒将移入回收站（保留 30 天），可在「设置 - 回收站」中恢复。") },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false

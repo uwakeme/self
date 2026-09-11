@@ -47,6 +47,25 @@ class ReminderRepository @Inject constructor(
     /** 清空所有提醒。供"数据管理 - 清除"使用。 */
     suspend fun deleteAll() = dao.deleteAll()
 
+    // ====== 回收站（软删除） ======
+
+    fun observeDeleted(): Flow<List<Reminder>> = dao.observeDeleted().map { it.map(::toDomain) }
+
+    fun countDeleted(): Flow<Int> = dao.countDeleted()
+
+    suspend fun softDelete(id: String, timestamp: Long) = dao.softDelete(id, timestamp)
+
+    suspend fun softDeleteByPerson(personId: String, timestamp: Long) =
+        dao.softDeleteByPerson(personId, timestamp)
+
+    suspend fun restore(id: String, timestamp: Long) = dao.restore(id, timestamp)
+
+    suspend fun purgeDeletedBefore(timestamp: Long): Int = dao.purgeDeletedBefore(timestamp)
+
+    /** 人物关联的全部提醒（含软删行）：随人物恢复 / 彻底删除时使用 */
+    suspend fun getByPersonAnyState(personId: String): List<Reminder> =
+        dao.getByPersonAnyState(personId).map(::toDomain)
+
     private fun toDomain(e: ReminderEntity): Reminder = Reminder(
         id = e.id,
         personId = e.personId,
@@ -60,7 +79,9 @@ class ReminderRepository @Inject constructor(
         notes = e.notes,
         triggeredAt = e.triggeredAt,
         createdAt = e.createdAt,
-        updatedAt = e.updatedAt
+        updatedAt = e.updatedAt,
+        isLunar = e.isLunar,
+        deletedAt = e.deletedAt
     )
 
     private fun toEntity(r: Reminder): ReminderEntity = ReminderEntity(
@@ -76,6 +97,8 @@ class ReminderRepository @Inject constructor(
         notes = r.notes,
         triggeredAt = r.triggeredAt,
         createdAt = r.createdAt,
-        updatedAt = r.updatedAt
+        updatedAt = r.updatedAt,
+        isLunar = r.isLunar,
+        deletedAt = r.deletedAt
     )
 }

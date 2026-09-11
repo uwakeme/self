@@ -81,6 +81,31 @@ class SettingsDataStore @Inject constructor(
         it[Keys.PERSON_MODULE_ORDER] = order.joinToString(",")
     }
 
+    /**
+     * 从备份恢复设置。应用锁开关/超时是设备侧安全状态、lastBackupTime 是导出动作的
+     * 时间戳，均不随备份恢复，保持当前设备值。
+     */
+    suspend fun restoreFrom(other: AppSettings) {
+        store.edit {
+            it[Keys.USER_NICKNAME] = other.userNickname
+            if (other.userAvatar != null) it[Keys.USER_AVATAR] = other.userAvatar else it.remove(Keys.USER_AVATAR)
+            it[Keys.DEFAULT_ADVANCE_DAYS] = other.defaultAdvanceDays
+            it[Keys.DEFAULT_REMINDER_TIME] = other.defaultReminderTime
+            it[Keys.SHOW_LUNAR] = other.showLunarBirthday
+            it[Keys.DARK_MODE] = other.darkMode.storage
+            it[Keys.FONT_SCALE] = other.fontScale.storage
+            it[Keys.EXPORT_FORMAT] = other.dataExportFormat.storage
+            it[Keys.SELF_MODULE_ORDER] = other.selfProfileModuleOrder.joinToString(",")
+            it[Keys.PERSON_MODULE_ORDER] = other.personDetailModuleOrder.joinToString(",")
+            it[Keys.GALLERY_SORT] = other.gallerySortRule.storage
+            if (other.galleryCustomOrder != null) {
+                it[Keys.GALLERY_CUSTOM_ORDER] = other.galleryCustomOrder.joinToString(",")
+            } else {
+                it.remove(Keys.GALLERY_CUSTOM_ORDER)
+            }
+        }
+    }
+
     private object Keys {
         val USER_NICKNAME = stringPreferencesKey("user_nickname")
         val USER_AVATAR = stringPreferencesKey("user_avatar")

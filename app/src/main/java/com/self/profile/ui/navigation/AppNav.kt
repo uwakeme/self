@@ -16,6 +16,7 @@ import com.self.profile.ui.people.AddPersonScreen
 import com.self.profile.ui.people.PeopleGalleryScreen
 import com.self.profile.ui.people.PersonDetailScreen
 import com.self.profile.ui.self.SelfDetailScreen
+import com.self.profile.ui.settings.RecycleBinScreen
 import com.self.profile.ui.settings.SettingsScreen
 
 /**
@@ -71,7 +72,12 @@ fun AppNav(navController: NavHostController = rememberNavController()) {
                 )
             }
             composable(Route.Settings.path) {
-                SettingsScreen()
+                SettingsScreen(
+                    onNavigateToRecycleBin = { navController.navigate(Route.RecycleBin.path) }
+                )
+            }
+            composable(Route.RecycleBin.path) {
+                RecycleBinScreen(onBack = { navController.popBackStack() })
             }
             composable(
                 route = Route.PersonDetail.path,

@@ -25,6 +25,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.self.profile.domain.model.Reminder
 import com.self.profile.domain.model.ReminderType
+import com.self.profile.domain.model.RepeatRule
+import com.self.profile.util.LunarHelper
+import com.self.profile.util.ReminderCalc
 import com.self.profile.util.parseHexColor
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -56,8 +59,14 @@ fun ReminderItem(
         ReminderType.ANNIVERSARY -> Color(0xFF6B8EAE)
         ReminderType.CUSTOM -> Color(0xFFD4A24E)
     }
-    val dateText = LocalDate.ofEpochDay(reminder.date).format(DateTimeFormatter.ofPattern("M月d日"))
-    val daysToGo = daysUntil(reminder.date)
+    // 倒计时用"下一次正日"：农历 / 跨年的重复提醒 reminder.date 可能已过期
+    val nextDate = ReminderCalc.nextOccurrenceDate(reminder)
+    val dateText = if (reminder.isLunar && reminder.repeat == RepeatRule.YEARLY) {
+        LunarHelper.lunarLabel(nextDate)
+    } else {
+        nextDate.format(DateTimeFormatter.ofPattern("M月d日"))
+    }
+    val daysToGo = nextDate.toEpochDay() - LocalDate.now().toEpochDay()
     val countdownText = when {
         daysToGo == 0L -> "今天"
         daysToGo > 0 -> "还有${daysToGo}天"
@@ -108,9 +117,4 @@ fun ReminderItem(
             )
         }
     }
-}
-
-private fun daysUntil(epochDay: Long): Long {
-    val today = LocalDate.now().toEpochDay()
-    return epochDay - today
 }

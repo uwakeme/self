@@ -1,10 +1,13 @@
 package com.self.profile.ui.settings
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.self.profile.data.backup.ClearSummary
 import com.self.profile.data.backup.DataExporter
+import com.self.profile.data.backup.ExportSummary
+import com.self.profile.data.backup.ImportResult
 import com.self.profile.data.datastore.SettingsDataStore
 import com.self.profile.data.repository.PersonRepository
 import com.self.profile.data.repository.ReminderRepository
@@ -49,6 +52,13 @@ class SettingsViewModel @Inject constructor(
     private val _exportState = MutableStateFlow<ExportState>(ExportState.Idle)
     val exportState: StateFlow<ExportState> = _exportState.asStateFlow()
 
+    private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
+    val importState: StateFlow<ImportState> = _importState.asStateFlow()
+
+    /** SAF 选好待导入的文件，等用户二次确认覆盖 */
+    private val _pendingImportUri = MutableStateFlow<Uri?>(null)
+    val pendingImportUri: StateFlow<Uri?> = _pendingImportUri.asStateFlow()
+
     private val _clearState = MutableStateFlow<ClearState>(ClearState.Idle)
     val clearState: StateFlow<ClearState> = _clearState.asStateFlow()
 
@@ -61,24 +71,32 @@ class SettingsViewModel @Inject constructor(
         combine(
             reminderRepo.observeAll(),
             reminderRepo.observeCount(),
-            reminderRepo.observeEnabledCount(),
-            reminderRepo.observeUpcoming(today, today + 7)
-        ) { reminders, total, enabledCount, upcoming -> Quad(reminders, total, enabledCount, upcoming) },
+            reminderRepo.observeEnabledCount()
+        ) { reminders, total, enabledCount -> Triple(reminders, total, enabledCount) },
         personRepo.observeAll(),
         settingsStore.settings,
         _typeFilter
-    ) { quad, allPeople, settings, tab ->
+    ) { triple, allPeople, settings, tab ->
+        val (reminders, total, enabledCount) = triple
         val personById = allPeople.associateBy { it.id }
-        val upcoming = quad.upcoming.mapNotNull { r ->
-            personById[r.personId]?.let { p -> UpcomingReminder(r, p.avatarInitial, p.avatarColor, p.name) }
-        }
-        val all = quad.reminders.mapNotNull { r ->
+        // 倒计时用"下一次正日"：农历 / 跨年的重复提醒 reminder.date 可能已过期
+        val upcoming = reminders.filter { it.enabled }
+            .map { r -> r to ReminderCalc.nextOccurrenceDate(r) }
+            .filter { (_, d) -> d.toEpochDay() in today..(today + 7) }
+            .sortedBy { (_, d) -> d.toEpochDay() }
+            .mapNotNull { (r, d) ->
+                personById[r.personId]?.let { p ->
+                    UpcomingReminder(r, p.avatarInitial, p.avatarColor, p.name, d)
+                }
+            }
+        val all = reminders.mapNotNull { r ->
             val person = personById[r.personId]
             AllReminder(
                 reminder = r,
                 personInitial = person?.avatarInitial ?: "·",
                 personColor = person?.avatarColor ?: "#C4785B",
-                personName = person?.name ?: "自定义"
+                personName = person?.name ?: "自定义",
+                nextDate = ReminderCalc.nextOccurrenceDate(r)
             )
         }
         val filtered = all.filter { row ->
@@ -92,9 +110,9 @@ class SettingsViewModel @Inject constructor(
         }
         SettingsUiState(
             settings = settings,
-            total = quad.total,
-            enabledCount = quad.enabledCount,
-            upcomingCount = quad.upcoming.size,
+            total = total,
+            enabledCount = enabledCount,
+            upcomingCount = upcoming.size,
             upcoming = upcoming,
             all = all,
             filtered = filtered,
@@ -121,6 +139,7 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * 新增或更新一条 reminder。保存后立即按 next trigger 调度。
+     * isLunar=true 时（仅 YEARLY 生效）调度按农历逐年换算公历。
      */
     fun saveReminder(
         existingId: String?,
@@ -131,7 +150,8 @@ class SettingsViewModel @Inject constructor(
         advanceDays: Int,
         reminderTime: String,
         repeat: RepeatRule,
-        notes: String?
+        notes: String?,
+        isLunar: Boolean
     ) {
         if (title.isBlank()) return
         viewModelScope.launch {
@@ -149,20 +169,24 @@ class SettingsViewModel @Inject constructor(
                 notes = notes?.takeIf { it.isNotBlank() },
                 triggeredAt = null,
                 createdAt = now,
-                updatedAt = now
+                updatedAt = now,
+                isLunar = isLunar
             )
             reminderRepo.upsert(reminder)
             val trigger = ReminderCalc.nextTriggerMillis(reminder)
             if (trigger != null) {
                 ReminderScheduler.scheduleReminder(appContext, reminder.id, trigger)
+            } else {
+                ReminderScheduler.cancel(appContext, reminder.id)
             }
         }
     }
 
+    /** 删除提醒：进回收站（软删），同时取消已挂的调度 */
     fun deleteReminder(reminder: Reminder) {
         viewModelScope.launch {
             ReminderScheduler.cancel(appContext, reminder.id)
-            reminderRepo.delete(reminder.id)
+            reminderRepo.softDelete(reminder.id, System.currentTimeMillis())
         }
     }
 
@@ -187,17 +211,17 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsStore.setShowLunarBirthday(value) }
     }
 
-    // ====== 数据导出 / 清除 ======
+    // ====== 数据导出 / 导入 / 清除 ======
 
     /**
-     * 触发数据导出。完成后 [exportState] 会变成 Success/Failure。
+     * 导出 zip 备份（含照片）到 SAF 选定的位置。完成后 [exportState] 变 Success/Failure。
      */
-    fun exportData() {
+    fun exportData(uri: Uri) {
         viewModelScope.launch {
             _exportState.value = ExportState.Running
             try {
-                val path = dataExporter.exportToDownloads()
-                _exportState.value = ExportState.Success(path)
+                val summary = dataExporter.exportToUri(uri)
+                _exportState.value = ExportState.Success(summary)
             } catch (e: Exception) {
                 _exportState.value = ExportState.Failure(e.message ?: "未知错误")
             }
@@ -206,6 +230,35 @@ class SettingsViewModel @Inject constructor(
 
     fun clearExportState() {
         _exportState.value = ExportState.Idle
+    }
+
+    /** SAF 选好待导入文件 → 弹覆盖确认 */
+    fun onImportFilePicked(uri: Uri) {
+        _pendingImportUri.value = uri
+    }
+
+    fun cancelImportConfirm() {
+        _pendingImportUri.value = null
+    }
+
+    /**
+     * 确认导入：恢复前自动对当前数据做安全备份（cache），成功后重挂提醒调度。
+     */
+    fun confirmImport(uri: Uri) {
+        _pendingImportUri.value = null
+        viewModelScope.launch {
+            _importState.value = ImportState.Running
+            try {
+                val result = dataExporter.importFromUri(uri)
+                _importState.value = ImportState.Success(result)
+            } catch (e: Exception) {
+                _importState.value = ImportState.Failure(e.message ?: "未知错误")
+            }
+        }
+    }
+
+    fun clearImportState() {
+        _importState.value = ImportState.Idle
     }
 
     /**
@@ -237,8 +290,18 @@ class SettingsViewModel @Inject constructor(
 sealed interface ExportState {
     data object Idle : ExportState
     data object Running : ExportState
-    data class Success(val path: String) : ExportState
+    data class Success(val summary: ExportSummary) : ExportState
     data class Failure(val error: String) : ExportState
+}
+
+/**
+ * 导入状态机。
+ */
+sealed interface ImportState {
+    data object Idle : ImportState
+    data object Running : ImportState
+    data class Success(val result: ImportResult) : ImportState
+    data class Failure(val error: String) : ImportState
 }
 
 /**
@@ -290,19 +353,14 @@ data class UpcomingReminder(
     val reminder: Reminder,
     val personInitial: String,
     val personColor: String,
-    val personName: String
+    val personName: String,
+    val nextDate: LocalDate
 )
 
 data class AllReminder(
     val reminder: Reminder,
     val personInitial: String,
     val personColor: String,
-    val personName: String
-)
-
-private data class Quad(
-    val reminders: List<Reminder>,
-    val total: Int,
-    val enabledCount: Int,
-    val upcoming: List<Reminder>
+    val personName: String,
+    val nextDate: LocalDate
 )

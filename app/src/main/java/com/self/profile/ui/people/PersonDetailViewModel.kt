@@ -36,7 +36,7 @@ import javax.inject.Inject
 class PersonDetailViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val personRepo: PersonRepository,
-    reminderRepo: ReminderRepository,
+    private val reminderRepo: ReminderRepository,
     private val photoStorage: PhotoStorage
 ) : ViewModel() {
 
@@ -85,7 +85,10 @@ class PersonDetailViewModel @Inject constructor(
         if (current !is PersonDetailUiState.Loaded) return
         if (current.person.isSelf) return  // self 不能删
         viewModelScope.launch {
-            personRepo.delete(current.person.id)
+            val now = System.currentTimeMillis()
+            // 软删进回收站，30 天内可恢复；关联提醒一并隐藏
+            personRepo.softDelete(current.person.id, now)
+            reminderRepo.softDeleteByPerson(current.person.id, now)
             onDone()
         }
     }

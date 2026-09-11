@@ -1,5 +1,7 @@
 package com.self.profile.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +24,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -54,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.self.profile.BuildConfig
+import com.self.profile.data.backup.DataExporter
 import com.self.profile.domain.model.DarkModePref
 import com.self.profile.domain.model.FontSizePref
 import com.self.profile.domain.model.Reminder
@@ -63,6 +67,7 @@ import com.self.profile.ui.components.SectionCard
 import com.self.profile.ui.components.dialogs.ChoicePickerDialog
 import com.self.profile.ui.reminder.ReminderEditorDialog
 import com.self.profile.ui.theme.WarmJournalColors
+import com.self.profile.util.LunarHelper
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -74,14 +79,17 @@ import java.time.format.DateTimeFormatter
  * - 上半 = 提醒中心：统计 + 即将到来 + 5 Tab 过滤 + 完整列表（toggle/edit/delete）+ FAB 添加
  * - 下半 = 设置：快捷设置 / 应用设置 / 关于
  *
- * 提醒中心已替代原独立 ReminderCenterScreen，home 入口直接走这里。
+ * 数据管理：导出 zip（含照片）到 SAF 自选位置 / 从备份导入 / 清除 / 回收站。
  */
 @Composable
 fun SettingsScreen(
+    onNavigateToRecycleBin: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val exportState by viewModel.exportState.collectAsStateWithLifecycle()
+    val importState by viewModel.importState.collectAsStateWithLifecycle()
+    val pendingImportUri by viewModel.pendingImportUri.collectAsStateWithLifecycle()
     val clearState by viewModel.clearState.collectAsStateWithLifecycle()
 
     var showDarkModePicker by remember { mutableStateOf(false) }
@@ -92,6 +100,15 @@ fun SettingsScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Reminder?>(null) }
     var pendingDelete by remember { mutableStateOf<Reminder?>(null) }
+
+    // SAF：导出 = CreateDocument 自选保存位置；导入 = OpenDocument 选备份文件
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri -> uri?.let(viewModel::exportData) }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(viewModel::onImportFilePicked) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -280,9 +297,19 @@ fun SettingsScreen(
                             value = when {
                                 clearState is ClearState.Running -> "清除中…"
                                 exportState is ExportState.Running -> "导出中…"
-                                else -> "导出/清除"
+                                importState is ImportState.Running -> "导入中…"
+                                else -> "备份/导入"
                             },
                             onClick = { showDataManageSheet = true }
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        SettingRow(
+                            label = "回收站",
+                            value = "已删除的人物与提醒",
+                            onClick = {
+                                showDataManageSheet = false
+                                onNavigateToRecycleBin()
+                            }
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         ToggleRow(
@@ -346,13 +373,46 @@ fun SettingsScreen(
         DataManageBottomSheet(
             onExport = {
                 showDataManageSheet = false
-                viewModel.exportData()
+                exportLauncher.launch(DataExporter.suggestedFileName())
+            },
+            onImport = {
+                showDataManageSheet = false
+                importLauncher.launch(
+                    arrayOf(
+                        "application/zip",
+                        "application/x-zip-compressed",
+                        "application/octet-stream",
+                        "application/json"
+                    )
+                )
             },
             onClear = {
                 showDataManageSheet = false
                 showClearStep1 = true
             },
             onDismiss = { showDataManageSheet = false }
+        )
+    }
+
+    // 导入前确认：覆盖当前全部数据
+    pendingImportUri?.let { importUri ->
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelImportConfirm() },
+            title = { Text("导入备份？") },
+            text = {
+                Text(
+                    "导入将覆盖当前所有人物、提醒和照片。\n\n" +
+                        "覆盖前会自动在应用缓存中留一份当前数据的安全备份。"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmImport(importUri) }) {
+                    Text("覆盖导入", color = WarmJournalColors.Primary, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.cancelImportConfirm() }) { Text("取消") }
+            }
         )
     }
 
@@ -456,7 +516,12 @@ fun SettingsScreen(
             AlertDialog(
                 onDismissRequest = { viewModel.clearExportState() },
                 title = { Text("导出成功") },
-                text = { Text("文件已保存到：\n${es.path}") },
+                text = {
+                    Text(
+                        "已保存 ${es.summary.peopleCount} 位人物、${es.summary.remindersCount} 条提醒、" +
+                            "${es.summary.photosCount} 张照片。\n\n可在文件管理器中查看 zip 文件。"
+                    )
+                },
                 confirmButton = {
                     TextButton(onClick = { viewModel.clearExportState() }) { Text("好的") }
                 }
@@ -474,13 +539,46 @@ fun SettingsScreen(
         }
     }
 
+    // 导入结果
+    when (val im = importState) {
+        ImportState.Idle, ImportState.Running -> Unit
+        is ImportState.Success -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.clearImportState() },
+                title = { Text("导入成功") },
+                text = {
+                    Text(
+                        "已恢复 ${im.result.peopleCount} 位人物、${im.result.remindersCount} 条提醒、" +
+                            "${im.result.photosRestored} 张照片。\n\n" +
+                            (im.result.safetyBackupPath?.let {
+                                "导入前的数据已备份在应用缓存：\n$it"
+                            } ?: "注意：导入前的安全备份未能生成。")
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearImportState() }) { Text("好的") }
+                }
+            )
+        }
+        is ImportState.Failure -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.clearImportState() },
+                title = { Text("导入失败") },
+                text = { Text("错误：${im.error}\n\n当前数据未被改动。") },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearImportState() }) { Text("好的") }
+                }
+            )
+        }
+    }
+
     // 添加提醒
     if (showAddDialog) {
         ReminderEditorDialog(
             existing = null,
             people = state.peopleById.values.toList(),
             onDismiss = { showAddDialog = false },
-            onSave = { personId, type, title, date, adv, time, repeat, notes ->
+            onSave = { personId, type, title, date, adv, time, repeat, notes, isLunar ->
                 viewModel.saveReminder(
                     existingId = null,
                     personId = personId,
@@ -490,7 +588,8 @@ fun SettingsScreen(
                     advanceDays = adv,
                     reminderTime = time,
                     repeat = repeat,
-                    notes = notes
+                    notes = notes,
+                    isLunar = isLunar
                 )
             }
         )
@@ -502,7 +601,7 @@ fun SettingsScreen(
             existing = target,
             people = state.peopleById.values.toList(),
             onDismiss = { editing = null },
-            onSave = { personId, type, title, date, adv, time, repeat, notes ->
+            onSave = { personId, type, title, date, adv, time, repeat, notes, isLunar ->
                 viewModel.saveReminder(
                     existingId = target.id,
                     personId = personId,
@@ -512,7 +611,8 @@ fun SettingsScreen(
                     advanceDays = adv,
                     reminderTime = time,
                     repeat = repeat,
-                    notes = notes
+                    notes = notes,
+                    isLunar = isLunar
                 )
             }
         )
@@ -523,7 +623,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("删除提醒") },
-            text = { Text("确定删除「${target.title}」？删除后无法恢复") },
+            text = { Text("确定删除「${target.title}」？\n\n删除后可在「设置 - 回收站」中恢复（保留 30 天）。") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteReminder(target)
@@ -561,13 +661,13 @@ private fun StatCell(label: String, value: Int) {
 
 @Composable
 private fun UpcomingRow(item: UpcomingReminder) {
-    val days = item.reminder.date - LocalDate.now().toEpochDay()
+    val days = item.nextDate.toEpochDay() - LocalDate.now().toEpochDay()
     val countdown = when {
         days == 0L -> "今天"
         days > 0 -> "还有${days}天"
         else -> "已过${-days}天"
     }
-    val dateText = LocalDate.ofEpochDay(item.reminder.date).format(DateTimeFormatter.ofPattern("M月d日"))
+    val dateText = formatDateText(item.reminder, item.nextDate)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(vertical = 8.dp)
@@ -585,6 +685,14 @@ private fun UpcomingRow(item: UpcomingReminder) {
     }
 }
 
+/** 公历 M月d日；农历提醒显示农历月日 */
+private fun formatDateText(reminder: Reminder, nextDate: LocalDate): String =
+    if (reminder.isLunar && reminder.repeat == com.self.profile.domain.model.RepeatRule.YEARLY) {
+        LunarHelper.lunarLabel(nextDate)
+    } else {
+        nextDate.format(DateTimeFormatter.ofPattern("M月d日"))
+    }
+
 @Composable
 private fun AllReminderRow(
     item: AllReminder,
@@ -592,13 +700,13 @@ private fun AllReminderRow(
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit
 ) {
-    val days = item.reminder.date - LocalDate.now().toEpochDay()
+    val days = item.nextDate.toEpochDay() - LocalDate.now().toEpochDay()
     val countdown = when {
         days == 0L -> "今天"
         days > 0 -> "还有${days}天"
         else -> "已过${-days}天"
     }
-    val dateText = LocalDate.ofEpochDay(item.reminder.date).format(DateTimeFormatter.ofPattern("M月d日"))
+    val dateText = formatDateText(item.reminder, item.nextDate)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -710,6 +818,7 @@ private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Un
 @Composable
 private fun DataManageBottomSheet(
     onExport: () -> Unit,
+    onImport: () -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -743,11 +852,25 @@ private fun DataManageBottomSheet(
             DataManageAction(
                 icon = Icons.Filled.FileDownload,
                 tint = WarmJournalColors.Primary,
-                title = "导出数据",
-                subtitle = "保存一份 JSON 备份到下载目录",
+                title = "导出备份",
+                subtitle = "人物、提醒和照片打包成 zip，保存到你选的位置",
                 onClick = {
                     scope.launch { sheetState.hide() }
                     onExport()
+                }
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // 导入数据
+            DataManageAction(
+                icon = Icons.Filled.RestoreFromTrash,
+                tint = WarmJournalColors.Primary,
+                title = "导入备份",
+                subtitle = "从 zip 备份恢复（会覆盖当前数据）",
+                onClick = {
+                    scope.launch { sheetState.hide() }
+                    onImport()
                 }
             )
 
