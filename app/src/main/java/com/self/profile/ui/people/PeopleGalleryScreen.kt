@@ -20,14 +20,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -39,7 +36,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,8 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -60,6 +54,8 @@ import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.RelationshipType
 import com.self.profile.ui.components.Avatar
 import com.self.profile.ui.components.EmptyState
+import com.self.profile.ui.components.PageHeader
+import com.self.profile.ui.components.SearchField
 import com.self.profile.ui.components.isLight
 import com.self.profile.ui.theme.WarmJournalColors
 import com.self.profile.util.parseHexColor
@@ -101,10 +97,14 @@ fun PeopleGalleryScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            GalleryBanner(total = state.total)
-            SearchBar(
-                query = state.query,
-                onQueryChange = viewModel::setQuery
+            PageHeader(
+                title = "人物图鉴",
+                subtitle = "${state.total} 位重要的人"
+            )
+            SearchField(
+                value = state.query,
+                onValueChange = viewModel::setQuery,
+                placeholder = "搜索姓名、城市、标签"
             )
             FilterChipsRow(
                 selectedType = state.filter,
@@ -248,72 +248,9 @@ private fun ReorderablePersonRow(
     }
 }
 
-@Composable
-private fun GalleryBanner(total: Int) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        WarmJournalColors.PrimaryLight,
-                        WarmJournalColors.PrimaryLightest
-                    )
-                )
-            )
-    ) {
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = "人物图鉴",
-                style = MaterialTheme.typography.titleLarge,
-                color = WarmJournalColors.TextInverse
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = "$total 位",
-                style = MaterialTheme.typography.bodySmall,
-                color = WarmJournalColors.TextInverse.copy(alpha = 0.85f),
-                modifier = Modifier.padding(bottom = 2.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit
-) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        placeholder = { Text("搜索姓名", style = MaterialTheme.typography.bodyMedium) },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-        trailingIcon = if (query.isNotEmpty()) {
-            {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Filled.Close, contentDescription = "清空")
-                }
-            }
-        } else null,
-        singleLine = true,
-        shape = RoundedCornerShape(14.dp),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = WarmJournalColors.BgCard,
-            unfocusedContainerColor = WarmJournalColors.BgCard
-        ),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    )
-}
+/**
+ * 统一搜索框（ui/components/SearchField）：白底圆角、聚焦主色描边。
+ */
 
 /**
  * 关系类型筛选，单行横向滚动（历史上有亲密度筛选时也是此行，现仅剩关系组）。

@@ -46,6 +46,7 @@ import com.self.profile.ui.components.GreetingHeader
 import com.self.profile.ui.components.QuickActionRow
 import com.self.profile.ui.components.QuoteCard
 import com.self.profile.ui.components.ReminderItem
+import com.self.profile.ui.components.SearchField
 import com.self.profile.ui.components.SectionCard
 import com.self.profile.ui.theme.WarmJournalColors
 import com.self.profile.util.LunarHelper
@@ -95,30 +96,15 @@ fun HomeScreen(
             onAvatarClick = { onNavigateToSelf(null) }
         )
 
-        // 全局搜索入口（Phase 3.1）
-        Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(MaterialTheme.shapes.large)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .clickable { onNavigateToSearch() }
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Icon(
-                    Icons.Filled.Search,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "搜索人物、笔记、共同点…",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+        // 全局搜索入口（统一搜索框，入口模式）
+        Box(modifier = Modifier.padding(horizontal = 4.dp)) {
+            SearchField(
+                value = "",
+                onValueChange = {},
+                placeholder = "搜索人物、笔记、共同点…",
+                entryOnly = true,
+                onEntryClick = onNavigateToSearch
+            )
         }
 
         // 快捷操作

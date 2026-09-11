@@ -63,6 +63,7 @@ import com.self.profile.domain.model.FontSizePref
 import com.self.profile.domain.model.Reminder
 import com.self.profile.ui.components.Avatar
 import com.self.profile.ui.components.EmptyState
+import com.self.profile.ui.components.PageHeader
 import com.self.profile.ui.components.SectionCard
 import com.self.profile.ui.components.dialogs.ChoicePickerDialog
 import com.self.profile.ui.reminder.ReminderEditorDialog
@@ -129,46 +130,11 @@ fun SettingsScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .verticalScroll(rememberScrollState())
         ) {
-            // 顶部 Header
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            listOf(WarmJournalColors.PrimaryLightest, WarmJournalColors.Bg)
-                        )
-                    )
-                    .padding(20.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(androidx.compose.foundation.shape.CircleShape)
-                            .background(WarmJournalColors.PrimaryLightest),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Notifications,
-                            contentDescription = null,
-                            tint = WarmJournalColors.Primary
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "提醒中心",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                        Text(
-                            text = "管理所有生日、纪念日和自定义提醒",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            // 顶部 Header（统一页面头部；本页上半为提醒中心）
+            PageHeader(
+                title = "设置",
+                subtitle = "提醒中心 · 数据 · 偏好"
+            )
 
             // 统计概览
             Box(modifier = Modifier.padding(horizontal = 16.dp)) {

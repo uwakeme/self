@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.RelationshipType
 import com.self.profile.ui.components.EmptyState
+import com.self.profile.ui.components.PageHeader
 import com.self.profile.ui.theme.WarmJournalColors
 import kotlin.math.PI
 import kotlin.math.cos
@@ -83,30 +84,11 @@ fun RelationshipMapScreen(
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
     ) {
-        // Header
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(WarmJournalColors.PrimaryLightest, WarmJournalColors.Bg)
-                    )
-                )
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "关系图谱",
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "看见人与人之间的联结",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        // Header（统一页面头部）
+        PageHeader(
+            title = "关系图谱",
+            subtitle = "看见人与人之间的联结"
+        )
 
         // Legend
         Legend()
