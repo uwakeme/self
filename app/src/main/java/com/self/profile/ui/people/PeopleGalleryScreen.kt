@@ -326,7 +326,7 @@ private fun FilterChipsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(horizontal = 12.dp, vertical = 2.dp)
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
