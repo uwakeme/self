@@ -38,12 +38,24 @@ class HomeViewModel @Inject constructor(
         settingsStore.settings
     ) { self, allPeople, enabledReminders, settings ->
         val others = allPeople.filter { !it.isSelf }
+        val personById = allPeople.associateBy { it.id }
         // 近期 = 下一次正日在未来 30 天内（农历 / 跨年提醒按重算日期过滤）
         val upcoming = enabledReminders
             .map { r -> r to ReminderCalc.nextOccurrenceDate(r, today) }
             .filter { (_, d) -> d.toEpochDay() in today.toEpochDay()..(today.toEpochDay() + 30) }
             .sortedBy { (_, d) -> d.toEpochDay() }
             .map { (r, _) -> r }
+        // 本月重要日子：下一次正日落在本月的提醒
+        val monthEvents = enabledReminders
+            .map { r ->
+                MonthEvent(
+                    reminder = r,
+                    personName = personById[r.personId]?.name,
+                    date = ReminderCalc.nextOccurrenceDate(r, today)
+                )
+            }
+            .filter { it.date.year == today.year && it.date.monthValue == today.monthValue }
+            .sortedBy { it.date.dayOfMonth }
         HomeUiState(
             nickname = settings.userNickname.takeIf { it.isNotBlank() } ?: "用户",
             avatarUrl = settings.userAvatar,
@@ -57,7 +69,8 @@ class HomeViewModel @Inject constructor(
                 colleague = others.count { it.relationshipType.label == "同事" },
                 classmate = others.count { it.relationshipType.label == "同学" }
             ),
-            showAllCount = others.size
+            showAllCount = others.size,
+            monthEvents = monthEvents
         )
     }.stateIn(
         scope = viewModelScope,
@@ -74,7 +87,8 @@ data class HomeUiState(
     val upcomingReminders: List<Reminder>,
     val others: List<Person>,
     val relationshipCounts: RelationshipCounts,
-    val showAllCount: Int
+    val showAllCount: Int,
+    val monthEvents: List<MonthEvent> = emptyList()
 ) {
     companion object {
         fun empty() = HomeUiState(
@@ -85,10 +99,18 @@ data class HomeUiState(
             upcomingReminders = emptyList(),
             others = emptyList(),
             relationshipCounts = RelationshipCounts(0, 0, 0, 0),
-            showAllCount = 0
+            showAllCount = 0,
+            monthEvents = emptyList()
         )
     }
 }
+
+/** 本月重要日子：提醒 + 下一次正日（农历提醒已换算公历） */
+data class MonthEvent(
+    val reminder: Reminder,
+    val personName: String?,
+    val date: LocalDate
+)
 
 data class RelationshipCounts(
     val family: Int,

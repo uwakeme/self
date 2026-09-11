@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.widget.Toast
 import com.self.profile.domain.model.RelationshipType
 import com.self.profile.ui.components.Avatar
+import com.self.profile.ui.components.TagGroup
 import com.self.profile.ui.components.dialogs.ChoicePickerDialog
 import com.self.profile.ui.theme.WarmJournalColors
 import com.self.profile.util.LunarHelper
@@ -139,6 +140,23 @@ fun AddPersonScreen(
                 onChange = viewModel::setMbti
             )
 
+            Spacer(Modifier.height(12.dp))
+
+            // 亲密程度
+            ClosenessRow(
+                selected = form.closenessLevel,
+                onChange = viewModel::setCloseness
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // 自定义标签
+            TagsRow(
+                tags = form.tags,
+                onAdd = viewModel::addTag,
+                onRemove = viewModel::removeTag
+            )
+
             Spacer(Modifier.height(32.dp))
 
             // 保存按钮
@@ -172,6 +190,78 @@ fun AddPersonScreen(
 
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun ClosenessRow(
+    selected: com.self.profile.domain.model.ClosenessLevel,
+    onChange: (com.self.profile.domain.model.ClosenessLevel) -> Unit
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    if (showPicker) {
+        ChoicePickerDialog(
+            title = "亲密程度",
+            options = com.self.profile.domain.model.ClosenessLevel.values().map { it.label },
+            selected = selected.label,
+            onConfirm = { picked ->
+                onChange(
+                    com.self.profile.domain.model.ClosenessLevel.values()
+                        .firstOrNull { it.label == picked }
+                        ?: com.self.profile.domain.model.ClosenessLevel.MEDIUM
+                )
+                showPicker = false
+            },
+            onDismiss = { showPicker = false }
+        )
+    }
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Text("亲密程度", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(12.dp)
+        ) {
+            TextButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = selected.label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagsRow(
+    tags: List<String>,
+    onAdd: (String) -> Unit,
+    onRemove: (String) -> Unit
+) {
+    var showInput by remember { mutableStateOf(false) }
+    if (showInput) {
+        com.self.profile.ui.components.dialogs.EditTextDialog(
+            title = "添加标签",
+            initialValue = "",
+            placeholder = "如：球友、书友",
+            onConfirm = { tag ->
+                onAdd(tag)
+                showInput = false
+            },
+            onDismiss = { showInput = false }
+        )
+    }
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Text("标签", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(8.dp))
+        TagGroup(
+            tags = tags,
+            onAddClick = { showInput = true },
+            onRemoveTag = onRemove
+        )
     }
 }
 

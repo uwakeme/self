@@ -2,6 +2,7 @@ package com.self.profile.ui.people
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -53,6 +55,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.self.profile.domain.model.ClosenessLevel
 import com.self.profile.domain.model.GallerySortRule
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.RelationshipType
@@ -108,6 +111,17 @@ fun PeopleGalleryScreen(
                 selected = state.filter,
                 onSelect = viewModel::setFilter
             )
+            ClosenessFilterRow(
+                selected = state.closenessFilter,
+                onSelect = viewModel::setClosenessFilter
+            )
+            if (state.availableTags.isNotEmpty()) {
+                TagFilterRow(
+                    tags = state.availableTags,
+                    selected = state.selectedTag,
+                    onSelect = viewModel::setTag
+                )
+            }
             SortRow(
                 rule = state.sortRule,
                 customOrderEdit = customOrderEdit,
@@ -335,6 +349,64 @@ private fun FilterRow(
 }
 
 @Composable
+private fun ClosenessFilterRow(
+    selected: ClosenessLevel?,
+    onSelect: (ClosenessLevel?) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 0.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        FilterChip(
+            selected = selected == null,
+            onClick = { onSelect(null) },
+            label = { Text("亲密度") }
+        )
+        ClosenessLevel.values().forEach { level ->
+            FilterChip(
+                selected = selected == level,
+                onClick = { onSelect(if (selected == level) null else level) },
+                label = { Text(level.label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = WarmJournalColors.PrimaryLightest,
+                    selectedLabelColor = WarmJournalColors.PrimaryDarker
+                )
+            )
+        }
+    }
+}
+
+/** 自定义标签筛选（有标签时才显示，横向可滚动） */
+@Composable
+private fun TagFilterRow(
+    tags: List<String>,
+    selected: String?,
+    onSelect: (String?) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 0.dp)
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        tags.forEach { tag ->
+            FilterChip(
+                selected = selected == tag,
+                onClick = { onSelect(if (selected == tag) null else tag) },
+                label = { Text("#$tag") },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = WarmJournalColors.PrimaryLightest,
+                    selectedLabelColor = WarmJournalColors.PrimaryDarker
+                )
+            )
+        }
+    }
+}
+
+@Composable
 private fun PersonCard(person: Person, onClick: () -> Unit) {
     Column(
         modifier = Modifier
@@ -382,9 +454,18 @@ private fun PersonCard(person: Person, onClick: () -> Unit) {
                 .padding(horizontal = 8.dp, vertical = 2.dp)
         ) {
             Text(
-                text = person.relationshipType.label,
+                text = "${person.relationshipType.label} · ${person.closenessLevel.label}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (person.tags.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = person.tags.joinToString(" ") { "#$it" },
+                style = MaterialTheme.typography.bodySmall,
+                color = WarmJournalColors.PrimaryDarker,
+                maxLines = 1
             )
         }
         person.bloodType?.takeIf { it.isNotBlank() }?.let { bt ->

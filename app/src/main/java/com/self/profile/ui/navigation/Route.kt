@@ -31,6 +31,8 @@ sealed class Route(val path: String) {
     data object AddPerson : Route("people/add")
 
     data object RecycleBin : Route("settings/recycle-bin")
+
+    data object GlobalSearch : Route("search")
 }
 
 /**

@@ -1,7 +1,9 @@
 package com.self.profile.ui.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,8 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,10 +28,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.self.profile.domain.model.RepeatRule
 import com.self.profile.ui.components.AvatarStack
 import com.self.profile.ui.components.EmptyState
 import com.self.profile.ui.components.GreetingHeader
@@ -33,8 +50,11 @@ import com.self.profile.ui.components.QuickActionRow
 import com.self.profile.ui.components.QuoteCard
 import com.self.profile.ui.components.ReminderItem
 import com.self.profile.ui.components.SectionCard
+import com.self.profile.ui.theme.WarmJournalColors
+import com.self.profile.util.LunarHelper
 import com.self.profile.util.QuoteProvider
 import com.self.profile.util.parseHexColor
+import java.time.LocalDate
 
 /**
  * 首页（US-001 ~ US-005）
@@ -58,6 +78,7 @@ fun HomeScreen(
     onNavigateToPeople: () -> Unit,
     onNavigateToMap: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToSearch: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -76,6 +97,32 @@ fun HomeScreen(
             fallbackInitial = state.fallbackInitial,
             onAvatarClick = { onNavigateToSelf(null) }
         )
+
+        // 全局搜索入口（Phase 3.1）
+        Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.large)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .clickable { onNavigateToSearch() }
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Icon(
+                    Icons.Filled.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "搜索人物、笔记、共同点…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         // 快捷操作
         Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
@@ -161,15 +208,75 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(12.dp))
+                        // 关系分布环形图 + 图例（Phase 3.3，纯 Canvas 自绘）
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            RelationshipLabel("家人", state.relationshipCounts.family, ColorFamily)
-                            RelationshipLabel("朋友", state.relationshipCounts.friend, ColorFriend)
-                            RelationshipLabel("同事", state.relationshipCounts.colleague, ColorColleague)
-                            RelationshipLabel("同学", state.relationshipCounts.classmate, ColorClassmate)
+                            RelationshipDonut(
+                                counts = state.relationshipCounts,
+                                modifier = Modifier.size(84.dp)
+                            )
+                            Spacer(Modifier.width(20.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                RelationshipLabel("家人", state.relationshipCounts.family, ColorFamily)
+                                RelationshipLabel("朋友", state.relationshipCounts.friend, ColorFriend)
+                                RelationshipLabel("同事", state.relationshipCounts.colleague, ColorColleague)
+                                RelationshipLabel("同学", state.relationshipCounts.classmate, ColorClassmate)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 本月重要日子（Phase 3.3：日历条 + 事件列表）
+        Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+            SectionCard(title = "本月重要日子") {
+                if (state.monthEvents.isEmpty()) {
+                    Text(
+                        text = "本月暂无生日或纪念日",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                } else {
+                    val today = LocalDate.now()
+                    MonthStrip(
+                        daysInMonth = today.lengthOfMonth(),
+                        today = today,
+                        eventsByDay = state.monthEvents.groupBy { it.date.dayOfMonth },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    state.monthEvents.take(3).forEach { event ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(ColorFamily, CircleShape)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "${event.date.monthValue}月${event.date.dayOfMonth}日" +
+                                    if (event.reminder.isLunar && event.reminder.repeat == RepeatRule.YEARLY) {
+                                        "（${LunarHelper.lunarLabel(event.date)}）"
+                                    } else "",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = event.reminder.title,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -209,3 +316,93 @@ private val ColorFamily = parseHexColor("#C4785B")!!
 private val ColorFriend = parseHexColor("#6B8EAE")!!
 private val ColorColleague = parseHexColor("#6B9E78")!!
 private val ColorClassmate = parseHexColor("#D4A24E")!!
+
+/**
+ * 关系分布环形图（Phase 3.3，纯 Canvas 自绘，与关系图谱同风格）。
+ */
+@Composable
+private fun RelationshipDonut(counts: RelationshipCounts, modifier: Modifier = Modifier) {
+    val segments = listOf(
+        ColorFamily to counts.family,
+        ColorFriend to counts.friend,
+        ColorColleague to counts.colleague,
+        ColorClassmate to counts.classmate
+    )
+    Canvas(modifier) {
+        val stroke = 13.dp.toPx()
+        val dia = size.minDimension - stroke
+        val topLeft = Offset(stroke / 2, stroke / 2)
+        val arcSize = Size(dia, dia)
+        if (counts.total == 0) {
+            drawArc(
+                color = WarmJournalColors.BgSurface,
+                startAngle = 0f, sweepAngle = 360f, useCenter = false,
+                style = Stroke(stroke, cap = StrokeCap.Butt),
+                topLeft = topLeft, size = arcSize
+            )
+            return@Canvas
+        }
+        var start = -90f
+        segments.forEach { (color, count) ->
+            if (count > 0) {
+                val sweep = count.toFloat() / counts.total * 360f
+                drawArc(
+                    color = color,
+                    startAngle = start, sweepAngle = sweep, useCenter = false,
+                    style = Stroke(stroke, cap = StrokeCap.Butt),
+                    topLeft = topLeft, size = arcSize
+                )
+                start += sweep
+            }
+        }
+    }
+}
+
+/**
+ * 本月日历条（Phase 3.3）：每天一格，今天高亮，有提醒的日子下方画点。
+ */
+@Composable
+private fun MonthStrip(
+    daysInMonth: Int,
+    today: LocalDate,
+    eventsByDay: Map<Int, List<com.self.profile.ui.home.MonthEvent>>,
+    modifier: Modifier = Modifier
+) {
+    val textMeasurer = rememberTextMeasurer()
+    Canvas(modifier.height(56.dp)) {
+        val cellW = size.width / daysInMonth
+        val labelStyle = TextStyle(fontSize = 9.sp, color = WarmJournalColors.TextSecondary)
+        val todayStyle = TextStyle(fontSize = 9.sp, color = WarmJournalColors.PrimaryDarker)
+        repeat(daysInMonth) { i ->
+            val day = i + 1
+            val cx = cellW * i + cellW / 2
+            val measured = textMeasurer.measure(day.toString(), if (day == today.dayOfMonth) todayStyle else labelStyle)
+            drawText(
+                measured,
+                topLeft = Offset(cx - measured.size.width / 2f, 4.dp.toPx())
+            )
+            if (day == today.dayOfMonth) {
+                drawCircle(
+                    color = WarmJournalColors.PrimaryDarker,
+                    radius = 1.5.dp.toPx(),
+                    center = Offset(cx, 18.dp.toPx())
+                )
+            }
+            val evs = eventsByDay[day]
+            if (!evs.isNullOrEmpty()) {
+                drawCircle(
+                    color = WarmJournalColors.Primary,
+                    radius = 2.5.dp.toPx(),
+                    center = Offset(cx, size.height - 10.dp.toPx())
+                )
+                if (evs.size >= 2) {
+                    drawCircle(
+                        color = WarmJournalColors.Primary,
+                        radius = 2.5.dp.toPx(),
+                        center = Offset(cx, size.height - 4.dp.toPx())
+                    )
+                }
+            }
+        }
+    }
+}

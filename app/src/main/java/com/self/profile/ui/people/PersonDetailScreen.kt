@@ -314,6 +314,8 @@ private fun PersonHeader(person: Person, vm: PersonDetailViewModel, modifier: Mo
     var showMbtiDialog by remember { mutableStateOf(false) }
     var showTypeDialog by remember { mutableStateOf(false) }
     var showColorDialog by remember { mutableStateOf(false) }
+    var showClosenessDialog by remember { mutableStateOf(false) }
+    var showTagInput by remember { mutableStateOf(false) }
 
     if (showNameDialog) {
         EditTextDialog(
@@ -346,6 +348,35 @@ private fun PersonHeader(person: Person, vm: PersonDetailViewModel, modifier: Mo
             currentColor = person.avatarColor,
             onConfirm = { newColor -> vm.updatePerson { it.copy(avatarColor = newColor) } },
             onDismiss = { showColorDialog = false }
+        )
+    }
+    if (showClosenessDialog) {
+        ChoicePickerDialog(
+            title = "亲密程度",
+            options = com.self.profile.domain.model.ClosenessLevel.values().map { it.label },
+            selected = person.closenessLevel.label,
+            onConfirm = { picked ->
+                val level = com.self.profile.domain.model.ClosenessLevel.values()
+                    .firstOrNull { it.label == picked } ?: com.self.profile.domain.model.ClosenessLevel.MEDIUM
+                vm.updatePerson { it.copy(closenessLevel = level) }
+                showClosenessDialog = false
+            },
+            onDismiss = { showClosenessDialog = false }
+        )
+    }
+    if (showTagInput) {
+        EditTextDialog(
+            title = "添加标签",
+            initialValue = "",
+            placeholder = "如：球友、书友",
+            onConfirm = { tag ->
+                val t = tag.trim()
+                if (t.isNotBlank() && t !in person.tags) {
+                    vm.updatePerson { it.copy(tags = it.tags + t) }
+                }
+                showTagInput = false
+            },
+            onDismiss = { showTagInput = false }
         )
     }
 
@@ -409,6 +440,29 @@ private fun PersonHeader(person: Person, vm: PersonDetailViewModel, modifier: Mo
                 )
             }
             EditIcon(onClick = { showMbtiDialog = true })
+        }
+        Spacer(Modifier.height(8.dp))
+        // 亲密度徽章（Phase 3.2：此前采集了但无处展示/修改）
+        Box(
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .background(WarmJournalColors.BgSurface)
+                .clickable { showClosenessDialog = true }
+                .padding(horizontal = 12.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "亲密度 ${person.closenessLevel.label}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (person.tags.isNotEmpty() || !person.isSelf) {
+            Spacer(Modifier.height(8.dp))
+            TagGroup(
+                tags = person.tags,
+                onAddClick = { showTagInput = true },
+                onRemoveTag = { tag -> vm.updatePerson { it.copy(tags = it.tags - tag) } }
+            )
         }
     }
 }

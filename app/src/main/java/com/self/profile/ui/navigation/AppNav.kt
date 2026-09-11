@@ -16,6 +16,7 @@ import com.self.profile.ui.people.AddPersonScreen
 import com.self.profile.ui.people.PeopleGalleryScreen
 import com.self.profile.ui.people.PersonDetailScreen
 import com.self.profile.ui.self.SelfDetailScreen
+import com.self.profile.ui.search.GlobalSearchScreen
 import com.self.profile.ui.settings.RecycleBinScreen
 import com.self.profile.ui.settings.SettingsScreen
 
@@ -40,7 +41,21 @@ fun AppNav(navController: NavHostController = rememberNavController()) {
                     onNavigateToSelf = { scrollTo -> navController.navigate(Route.Self.build(scrollTo)) },
                     onNavigateToPeople = { navController.navigate(Route.People.path) },
                     onNavigateToMap = { navController.navigate(Route.Map.path) },
-                    onNavigateToSettings = { navController.navigate(Route.Settings.path) }
+                    onNavigateToSettings = { navController.navigate(Route.Settings.path) },
+                    onNavigateToSearch = { navController.navigate(Route.GlobalSearch.path) }
+                )
+            }
+
+            composable(Route.GlobalSearch.path) {
+                GlobalSearchScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPerson = { person ->
+                        if (person.isSelf) {
+                            navController.navigate(Route.Self.build(null))
+                        } else {
+                            navController.navigate(Route.PersonDetail.build(person.id))
+                        }
+                    }
                 )
             }
             composable(
