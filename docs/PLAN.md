@@ -1,9 +1,9 @@
 # 「自我档案与人物图鉴」开发实施计划
 
 > **版本**：v1.0  
-> **状态**：Active  
-> **最后更新**：2026-08-07  
-> **配套文档**：[PRD.md](./PRD.md) · `design/`（HTML 原型）
+> **状态**：Completed（阶段 0-7 已全部完成并于 2026-08-07 提交 `66b99bb`；后续迭代见 [POST_LAUNCH_ROADMAP.md](./POST_LAUNCH_ROADMAP.md)，其 Phase 1-3 亦已完成；正文 checkbox 不再逐条回填，以 git log 为准）  
+> **最后更新**：2026-09-11  
+> **配套文档**：[PRD.md](./PRD.md)
 
 ## 0. 关键决策（已与用户对齐）
 
