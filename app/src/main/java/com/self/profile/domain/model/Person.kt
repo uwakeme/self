@@ -16,7 +16,6 @@ data class Person(
     val relationshipType: RelationshipType,
     val mbti: String? = null,
     val bloodType: String? = null,
-    val closenessLevel: ClosenessLevel = ClosenessLevel.MEDIUM,
     val isSelf: Boolean = false,
     val personalBackground: PersonalBackground = PersonalBackground(),
     val bodyData: BodyData = BodyData(),
@@ -51,13 +50,6 @@ enum class RelationshipType(val label: String) {
         fun fromLabel(label: String): RelationshipType =
             values().firstOrNull { it.label == label } ?: FRIEND
     }
-}
-
-@Serializable
-enum class ClosenessLevel(val label: String) {
-    CLOSE("近"),
-    MEDIUM("中"),
-    FAR("远")
 }
 
 @Serializable

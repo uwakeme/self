@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.self.profile.data.datastore.SettingsDataStore
 import com.self.profile.data.repository.PersonRepository
-import com.self.profile.domain.model.ClosenessLevel
 import com.self.profile.domain.model.GallerySortRule
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.RelationshipType
@@ -26,7 +25,8 @@ import javax.inject.Inject
  * 阶段 1：搜索 + 分类筛选
  * 阶段 3：4 种排序规则（最近查看 / 最近修改 / 创建时间 / 自定义）
  * 阶段 6：自定义排序下可上下箭头重排（US-017）
- * Phase 3.2：自定义标签筛选 + 亲密度筛选；搜索扩展到城市/MBTI/标签
+ * Phase 3.2：自定义标签筛选；搜索扩展到城市/MBTI/标签
+ * （亲密度筛选已于后续版本移除，字段保留在数据层）
  */
 @HiltViewModel
 class PeopleGalleryViewModel @Inject constructor(
@@ -43,9 +43,6 @@ class PeopleGalleryViewModel @Inject constructor(
     private val _selectedTag = MutableStateFlow<String?>(null)
     val selectedTag: StateFlow<String?> = _selectedTag.asStateFlow()
 
-    private val _closenessFilter = MutableStateFlow<ClosenessLevel?>(null)
-    val closenessFilter: StateFlow<ClosenessLevel?> = _closenessFilter.asStateFlow()
-
     private val allOthers = personRepo.observeAll().map { it.filter { p -> !p.isSelf } }
 
     val state: StateFlow<GalleryUiState> = combine(
@@ -53,8 +50,8 @@ class PeopleGalleryViewModel @Inject constructor(
         _query,
         _filter,
         settingsStore.settings,
-        combine(_selectedTag, _closenessFilter) { tag, closeness -> tag to closeness }
-    ) { all, q, type, settings, (tag, closeness) ->
+        _selectedTag
+    ) { all, q, type, settings, tag ->
         fun matchesQuery(p: Person): Boolean = q.isBlank() ||
             p.name.contains(q, ignoreCase = true) ||
             p.mbti?.contains(q, ignoreCase = true) == true ||
@@ -65,8 +62,7 @@ class PeopleGalleryViewModel @Inject constructor(
         val filtered = all.filter { p ->
             matchesQuery(p) &&
                 (type == null || p.relationshipType == type) &&
-                (tag == null || p.tags.contains(tag)) &&
-                (closeness == null || p.closenessLevel == closeness)
+                (tag == null || p.tags.contains(tag))
         }
         val sorted = sortPeople(filtered, settings.gallerySortRule, settings.galleryCustomOrder)
 
@@ -77,15 +73,14 @@ class PeopleGalleryViewModel @Inject constructor(
             filter = type,
             sortRule = settings.gallerySortRule,
             availableTags = all.flatMap { it.tags }.distinct().sorted(),
-            selectedTag = tag,
-            closenessFilter = closeness
+            selectedTag = tag
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = GalleryUiState(
             emptyList(), 0, "", null, GallerySortRule.CREATED_AT,
-            emptyList(), null, null
+            emptyList(), null
         )
     )
 
@@ -112,7 +107,6 @@ class PeopleGalleryViewModel @Inject constructor(
     fun setQuery(q: String) { _query.value = q }
     fun setFilter(type: RelationshipType?) { _filter.value = type }
     fun setTag(tag: String?) { _selectedTag.value = tag }
-    fun setClosenessFilter(level: ClosenessLevel?) { _closenessFilter.value = level }
 
     fun setSortRule(rule: GallerySortRule) {
         viewModelScope.launch { settingsStore.setGallerySortRule(rule) }
@@ -155,6 +149,5 @@ data class GalleryUiState(
     val filter: RelationshipType?,
     val sortRule: GallerySortRule,
     val availableTags: List<String> = emptyList(),
-    val selectedTag: String? = null,
-    val closenessFilter: ClosenessLevel? = null
+    val selectedTag: String? = null
 )

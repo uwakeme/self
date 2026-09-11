@@ -45,10 +45,6 @@ class AddPersonViewModel @Inject constructor(
         _form.value = _form.value.copy(avatarColor = color)
     }
 
-    fun setCloseness(level: com.self.profile.domain.model.ClosenessLevel) {
-        _form.value = _form.value.copy(closenessLevel = level)
-    }
-
     fun addTag(tag: String) {
         val t = tag.trim()
         if (t.isNotBlank() && t !in _form.value.tags) {
@@ -78,7 +74,6 @@ class AddPersonViewModel @Inject constructor(
                 avatarInitial = f.name.trim().take(1),
                 relationshipType = f.relationshipType,
                 mbti = f.mbti,
-                closenessLevel = f.closenessLevel,
                 isSelf = false,
                 tags = f.tags,
                 createdAt = now,
@@ -96,6 +91,5 @@ data class AddPersonForm(
     val relationshipType: RelationshipType = RelationshipType.FRIEND,
     val mbti: String? = null,
     val avatarColor: String = "#6B8EAE",
-    val closenessLevel: com.self.profile.domain.model.ClosenessLevel = com.self.profile.domain.model.ClosenessLevel.MEDIUM,
     val tags: List<String> = emptyList()
 )

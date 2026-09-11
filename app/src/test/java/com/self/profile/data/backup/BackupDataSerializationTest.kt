@@ -1,7 +1,6 @@
 package com.self.profile.data.backup
 
 import com.self.profile.data.local.AppJson
-import com.self.profile.domain.model.ClosenessLevel
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.Photo
 import com.self.profile.domain.model.RelationshipType
@@ -22,7 +21,6 @@ class BackupDataSerializationTest {
         avatarColor = "#C4785B",
         avatarInitial = "妈",
         relationshipType = RelationshipType.FAMILY,
-        closenessLevel = ClosenessLevel.CLOSE,
         isSelf = false,
         photos = listOf(Photo("ph1", "/data/user/0/app/files/photos/a.jpg", "旧照", 1L)),
         tags = listOf("家人", "常用"),

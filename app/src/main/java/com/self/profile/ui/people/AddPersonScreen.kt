@@ -142,14 +142,6 @@ fun AddPersonScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // 亲密程度
-            ClosenessRow(
-                selected = form.closenessLevel,
-                onChange = viewModel::setCloseness
-            )
-
-            Spacer(Modifier.height(12.dp))
-
             // 自定义标签
             TagsRow(
                 tags = form.tags,
@@ -189,48 +181,6 @@ fun AddPersonScreen(
             }
 
             Spacer(Modifier.height(24.dp))
-        }
-    }
-}
-
-@Composable
-private fun ClosenessRow(
-    selected: com.self.profile.domain.model.ClosenessLevel,
-    onChange: (com.self.profile.domain.model.ClosenessLevel) -> Unit
-) {
-    var showPicker by remember { mutableStateOf(false) }
-    if (showPicker) {
-        ChoicePickerDialog(
-            title = "亲密程度",
-            options = com.self.profile.domain.model.ClosenessLevel.values().map { it.label },
-            selected = selected.label,
-            onConfirm = { picked ->
-                onChange(
-                    com.self.profile.domain.model.ClosenessLevel.values()
-                        .firstOrNull { it.label == picked }
-                        ?: com.self.profile.domain.model.ClosenessLevel.MEDIUM
-                )
-                showPicker = false
-            },
-            onDismiss = { showPicker = false }
-        )
-    }
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-        Text("亲密程度", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(4.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(12.dp)
-        ) {
-            TextButton(onClick = { showPicker = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = selected.label,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
         }
     }
 }

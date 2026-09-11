@@ -34,9 +34,6 @@ data class PersonEntity(
     @ColumnInfo(name = "blood_type")
     val bloodType: String? = null,
 
-    @ColumnInfo(name = "closeness_level")
-    val closenessLevel: String,                           // 近/中/远
-
     @ColumnInfo(name = "is_self")
     val isSelf: Boolean,
 

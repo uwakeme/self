@@ -8,7 +8,6 @@ import com.self.profile.domain.model.Aspiration
 import com.self.profile.domain.model.Anniversary
 import com.self.profile.domain.model.BodyData
 import com.self.profile.domain.model.CategorizedItems
-import com.self.profile.domain.model.ClosenessLevel
 import com.self.profile.domain.model.CommonGround
 import com.self.profile.domain.model.LifeJourneyEntry
 import com.self.profile.domain.model.Note
@@ -93,8 +92,6 @@ class PersonRepository @Inject constructor(
         relationshipType = RelationshipType.fromLabel(e.relationshipType),
         mbti = e.mbti,
         bloodType = e.bloodType,
-        closenessLevel = ClosenessLevel.values().firstOrNull { it.label == e.closenessLevel }
-            ?: ClosenessLevel.MEDIUM,
         isSelf = e.isSelf,
         personalBackground = e.personalBackground.toDomain(),
         bodyData = e.bodyData.toDomain(),
@@ -126,7 +123,6 @@ class PersonRepository @Inject constructor(
         relationshipType = p.relationshipType.label,
         mbti = p.mbti,
         bloodType = p.bloodType,
-        closenessLevel = p.closenessLevel.label,
         isSelf = p.isSelf,
         personalBackground = p.personalBackground.toEntity(),
         bodyData = p.bodyData.toEntity(),

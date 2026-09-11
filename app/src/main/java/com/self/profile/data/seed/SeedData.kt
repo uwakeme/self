@@ -8,7 +8,6 @@ import com.self.profile.domain.model.Anniversary
 import com.self.profile.domain.model.Aspiration
 import com.self.profile.domain.model.BodyData
 import com.self.profile.domain.model.CategorizedItems
-import com.self.profile.domain.model.ClosenessLevel
 import com.self.profile.domain.model.CommonGround
 import com.self.profile.domain.model.LifeJourneyEntry
 import com.self.profile.domain.model.Note
@@ -63,7 +62,6 @@ class SeedData @Inject constructor(
                 relationshipType = RelationshipType.FRIEND,  // isSelf 时无所谓
                 mbti = "INFJ",
                 bloodType = "A",
-                closenessLevel = ClosenessLevel.CLOSE,
                 isSelf = true,
                 personalBackground = PersonalBackground(
                     hometown = "浙江·杭州",
@@ -134,7 +132,6 @@ class SeedData @Inject constructor(
                 avatarColor = "#C4785B",
                 avatarInitial = "妈",
                 relationshipType = RelationshipType.FAMILY,
-                closenessLevel = ClosenessLevel.CLOSE,
                 personalBackground = PersonalBackground(
                     hometown = "浙江·杭州",
                     birthday = LocalDate.of(1968, 3, 15).toEpochDay(),
@@ -169,7 +166,6 @@ class SeedData @Inject constructor(
                 avatarColor = "#D99B82",
                 avatarInitial = "姐",
                 relationshipType = RelationshipType.FAMILY,
-                closenessLevel = ClosenessLevel.CLOSE,
                 personalBackground = PersonalBackground(
                     currentCity = "杭州",
                     birthday = LocalDate.of(1995, 11, 23).toEpochDay(),
@@ -195,7 +191,6 @@ class SeedData @Inject constructor(
                 avatarInitial = "林",
                 relationshipType = RelationshipType.FRIEND,
                 mbti = "ENFP",
-                closenessLevel = ClosenessLevel.MEDIUM,
                 personalBackground = PersonalBackground(
                     currentCity = "上海",
                     birthday = LocalDate.of(1998, 6, 20).toEpochDay(),
@@ -225,7 +220,6 @@ class SeedData @Inject constructor(
                 avatarInitial = "杰",
                 relationshipType = RelationshipType.FRIEND,
                 mbti = "ISTP",
-                closenessLevel = ClosenessLevel.MEDIUM,
                 personalBackground = PersonalBackground(
                     job = "摄影师"
                 ),
@@ -241,7 +235,6 @@ class SeedData @Inject constructor(
                 avatarColor = "#6B9E78",
                 avatarInitial = "师",
                 relationshipType = RelationshipType.COLLEAGUE,
-                closenessLevel = ClosenessLevel.MEDIUM,
                 personalBackground = PersonalBackground(
                     job = "高级编辑"
                 ),

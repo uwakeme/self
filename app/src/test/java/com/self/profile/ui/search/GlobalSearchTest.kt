@@ -1,6 +1,5 @@
 package com.self.profile.ui.search
 
-import com.self.profile.domain.model.ClosenessLevel
 import com.self.profile.domain.model.Note
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.RelationshipType
@@ -24,7 +23,6 @@ class GlobalSearchTest {
         avatarColor = "#C4785B",
         avatarInitial = name.take(1),
         relationshipType = RelationshipType.FRIEND,
-        closenessLevel = ClosenessLevel.MEDIUM,
         isSelf = false,
         personalBackground = com.self.profile.domain.model.PersonalBackground(currentCity = city),
         interactionNotes = notes,

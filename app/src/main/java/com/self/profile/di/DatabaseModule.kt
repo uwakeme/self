@@ -27,8 +27,9 @@ object DatabaseModule {
             AppDatabase::class.java,
             AppDatabase.DB_NAME
         )
-            // v2 起正式迁移：不再破坏性清库，升版本必须配套新增 Migration
-            .addMigrations(AppDatabase.MIGRATION_1_2)
+            // 开发阶段（未上线）：schema 重置直接重建，见 AppDatabase 注释；
+            // 上线前改为 .addMigrations(...) 正式迁移
+            .fallbackToDestructiveMigration()
             .build()
 
     @Provides

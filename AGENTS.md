@@ -35,7 +35,7 @@
 - `gradle/libs.versions.toml` — 所有第三方库版本统一管理
 - `docs/PRD.md` `docs/PLAN.md` `docs/POST_LAUNCH_ROADMAP.md` — 产品 / 阶段 / 路线图
 
-> 数据库已是 schema v2（正式 Migration，弃用破坏性回退）：**升 Room version 必须在 `AppDatabase` 配套新增 Migration 并在 `DatabaseModule` 注册**，否则升级直接崩溃。
+> 数据库当前 version 3，开发阶段（未上线）用 `fallbackToDestructiveMigration`：schema 变更直接重建、不写 Migration（用户已确认开发期数据可清）。**上线前必须**删掉 fallback、开 `exportSchema`、补正式 Migration。
 
 ## Code style
 

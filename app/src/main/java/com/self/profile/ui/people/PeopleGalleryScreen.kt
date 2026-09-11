@@ -55,7 +55,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.self.profile.domain.model.ClosenessLevel
 import com.self.profile.domain.model.GallerySortRule
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.RelationshipType
@@ -109,9 +108,7 @@ fun PeopleGalleryScreen(
             )
             FilterChipsRow(
                 selectedType = state.filter,
-                onTypeSelect = viewModel::setFilter,
-                selectedCloseness = state.closenessFilter,
-                onClosenessSelect = viewModel::setClosenessFilter
+                onTypeSelect = viewModel::setFilter
             )
             if (state.availableTags.isNotEmpty()) {
                 TagFilterRow(
@@ -319,14 +316,12 @@ private fun SearchBar(
 }
 
 /**
- * 关系类型 + 亲密度合并为一行横向滚动（中间竖线分隔两组），压缩头部高度。
+ * 关系类型筛选，单行横向滚动（历史上有亲密度筛选时也是此行，现仅剩关系组）。
  */
 @Composable
 private fun FilterChipsRow(
     selectedType: RelationshipType?,
-    onTypeSelect: (RelationshipType?) -> Unit,
-    selectedCloseness: ClosenessLevel?,
-    onClosenessSelect: (ClosenessLevel?) -> Unit
+    onTypeSelect: (RelationshipType?) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -346,23 +341,6 @@ private fun FilterChipsRow(
                 selected = selectedType == type,
                 onClick = { onTypeSelect(type) },
                 label = { Text(type.label) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = WarmJournalColors.PrimaryLightest,
-                    selectedLabelColor = WarmJournalColors.PrimaryDarker
-                )
-            )
-        }
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .height(22.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant)
-        )
-        ClosenessLevel.values().forEach { level ->
-            FilterChip(
-                selected = selectedCloseness == level,
-                onClick = { onClosenessSelect(if (selectedCloseness == level) null else level) },
-                label = { Text(level.label) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = WarmJournalColors.PrimaryLightest,
                     selectedLabelColor = WarmJournalColors.PrimaryDarker
@@ -448,7 +426,7 @@ private fun PersonCard(person: Person, onClick: () -> Unit) {
                 .padding(horizontal = 8.dp, vertical = 2.dp)
         ) {
             Text(
-                text = "${person.relationshipType.label} · ${person.closenessLevel.label}",
+                text = person.relationshipType.label,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
