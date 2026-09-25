@@ -390,7 +390,7 @@ fun SettingsScreen(
             text = {
                 Text(
                     "将永久删除：\n" +
-                        "· ${state.total} 位人物（含你自己）\n" +
+                        "· ${state.peopleById.size} 位人物（含你自己）\n" +
                         "· ${state.all.size} 条提醒\n" +
                         "· 所有已上传的照片\n\n" +
                         "设置项（深色模式、字体、应用锁等）不会被清除。"
