@@ -5,7 +5,7 @@
          API 26-30 自动降级到 windowBackground） -->
     <style name="Theme.SelfProfile.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/bg</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/Theme.SelfProfile</item>
     </style>
 
