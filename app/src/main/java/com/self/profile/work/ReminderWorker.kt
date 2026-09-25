@@ -87,7 +87,7 @@ class ReminderWorker @AssistedInject constructor(
         )
 
         val notification = NotificationCompat.Builder(context, NotificationChannels.REMINDER_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(reminder.title)
             .setContentText(reminder.notes ?: "今天是个重要日子")
             .setPriority(NotificationCompat.PRIORITY_HIGH)

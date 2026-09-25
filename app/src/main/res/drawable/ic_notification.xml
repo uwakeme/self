@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 通知栏专用小图标：纯白单色人物剪影（呼应启动图的水彩人物意象）。
+     通知小图标按 alpha 蒙版渲染，不能用彩色启动图。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,4.5a3.5,3.5 0 1,1 0,7a3.5,3.5 0 1,1 0,-7Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M5,19a7,7.5 0 0,1 14,0Z" />
+</vector>
