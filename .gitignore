@@ -34,3 +34,6 @@ google-services.json
 
 # 历史归档（临时存放，不进版本控制）
 .archive/
+
+# 模拟器 UI 测试截图（临时产物）
+.testshots/
