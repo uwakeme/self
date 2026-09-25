@@ -1,6 +1,6 @@
 # 自我档案与人物图鉴 — 后期阶段路线图
 
-> **状态**：Draft  
+> **状态**：已完成（Phase 1-3 全部落地并提交；延后项见 §5，以 git log 为准）  
 > **起算时间**：2026-08-10  
 > **基于**：PRD v1.0.0 + 已完成 Stage 0-7（17 个 commit on `main`）  
 > **目标**：补齐 PRD 验收标准里缺失的细节，把 app 推到 v1.0 release-ready
@@ -284,16 +284,17 @@
 
 ## 5. 不在本路线图（明确推迟）
 
-| 项 | 推迟理由 |
+> 下表为当前实际状态：原推迟项中数据导入、桌面 widget、单元测试、Release 签名均已在 Phase 1-3 落地，从表中移出。
+
+| 项 | 状态 / 推迟理由 |
 |---|---|
-| 数据导入 | UUID 重映射、版本兼容、冲突解决等逻辑复杂，本期不引入 |
-| 拖拽排序（reorderable 库） | 现有上下箭头按钮功能等价，PRD 要求是 nice-to-have |
-| 单元测试基建 | 没有 CI 跑测试，写了也没用，先沉淀手动测试 |
+| 拖拽排序（reorderable 库） | 现有排序交互功能等价，PRD 要求是 nice-to-have |
 | CI / GitHub Actions | 单独 devops 路线 |
-| Release 签名 config | 当前 debug 够用，正式发布前再做 |
-| i18n（多语言） | PRD 没要求 |
+| i18n（多语言） | PRD 没要求，v1 只做中文（预留 values-en） |
+| UI 文案外化 strings.xml | 推迟：v1 只做中文，外化工作量大 |
+| 无障碍（contentDescription 补全） | 推迟 |
+| 数据加密 | 推迟：本地个人数据场景 |
 | 备份到云端 | PRD 明确说"非目标" |
-| 桌面 widget | 不在 MVP 范围 |
 | 桌面端 / Pad 适配 | minSdk 26 移动端优先 |
 
 ---
