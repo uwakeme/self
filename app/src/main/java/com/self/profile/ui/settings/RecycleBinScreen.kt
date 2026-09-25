@@ -43,8 +43,8 @@ import com.self.profile.domain.model.Reminder
 import com.self.profile.ui.components.Avatar
 import com.self.profile.ui.components.EmptyState
 import com.self.profile.ui.components.SectionCard
+import com.self.profile.util.DateFormats
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 /**
  * 回收站：查看 / 恢复 / 彻底删除软删的人物与提醒。
@@ -330,7 +330,7 @@ private fun formatDate(epochMillis: Long?): String {
     if (epochMillis == null) return "未知"
     val date = java.time.Instant.ofEpochMilli(epochMillis)
         .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-    return date.format(DateTimeFormatter.ofPattern("M月d日"))
+    return date.format(DateFormats.SHORT)
 }
 
 private fun daysLeftText(deletedAt: Long?): String {

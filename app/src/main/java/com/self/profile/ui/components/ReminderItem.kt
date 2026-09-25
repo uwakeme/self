@@ -26,11 +26,11 @@ import androidx.compose.ui.unit.dp
 import com.self.profile.domain.model.Reminder
 import com.self.profile.domain.model.ReminderType
 import com.self.profile.domain.model.RepeatRule
+import com.self.profile.util.DateFormats
 import com.self.profile.util.LunarHelper
 import com.self.profile.util.ReminderCalc
 import com.self.profile.util.parseHexColor
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 /**
  * 提醒列表项（首页近期提醒 / 提醒中心复用）。
@@ -64,7 +64,7 @@ fun ReminderItem(
     val dateText = if (reminder.isLunar && reminder.repeat == RepeatRule.YEARLY) {
         LunarHelper.lunarLabel(nextDate)
     } else {
-        nextDate.format(DateTimeFormatter.ofPattern("M月d日"))
+        nextDate.format(DateFormats.SHORT)
     }
     val daysToGo = nextDate.toEpochDay() - LocalDate.now().toEpochDay()
     val countdownText = when {

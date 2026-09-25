@@ -68,10 +68,10 @@ import com.self.profile.ui.components.SectionCard
 import com.self.profile.ui.components.dialogs.ChoicePickerDialog
 import com.self.profile.ui.reminder.ReminderEditorDialog
 import com.self.profile.ui.theme.WarmJournalColors
+import com.self.profile.util.DateFormats
 import com.self.profile.util.LunarHelper
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 /**
  * 设置页 / 提醒中心（US-012 / US-013 / US-014 / US-015 / US-018）。
@@ -656,7 +656,7 @@ private fun formatDateText(reminder: Reminder, nextDate: LocalDate): String =
     if (reminder.isLunar && reminder.repeat == com.self.profile.domain.model.RepeatRule.YEARLY) {
         LunarHelper.lunarLabel(nextDate)
     } else {
-        nextDate.format(DateTimeFormatter.ofPattern("M月d日"))
+        nextDate.format(DateFormats.SHORT)
     }
 
 @Composable

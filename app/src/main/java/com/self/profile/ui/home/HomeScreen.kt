@@ -51,7 +51,6 @@ import com.self.profile.ui.components.SectionCard
 import com.self.profile.ui.theme.WarmJournalColors
 import com.self.profile.util.LunarHelper
 import com.self.profile.util.QuoteProvider
-import com.self.profile.util.parseHexColor
 import java.time.LocalDate
 
 /**
@@ -287,10 +286,10 @@ private fun RelationshipLabel(label: String, count: Int, color: androidx.compose
 }
 
 // 关系图例颜色（与 design prototype 一致）
-private val ColorFamily = parseHexColor("#C4785B")!!
-private val ColorFriend = parseHexColor("#6B8EAE")!!
-private val ColorColleague = parseHexColor("#6B9E78")!!
-private val ColorClassmate = parseHexColor("#D4A24E")!!
+private val ColorFamily = Color(0xFFC4785B)
+private val ColorFriend = Color(0xFF6B8EAE)
+private val ColorColleague = Color(0xFF6B9E78)
+private val ColorClassmate = Color(0xFFD4A24E)
 
 /**
  * 关系分布环形图（Phase 3.3，纯 Canvas 自绘，与关系图谱同风格）。

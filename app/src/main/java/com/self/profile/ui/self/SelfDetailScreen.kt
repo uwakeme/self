@@ -88,10 +88,10 @@ import com.self.profile.ui.components.dialogs.DatePickerSheet
 import com.self.profile.ui.components.dialogs.EditTextAreaDialog
 import com.self.profile.ui.components.dialogs.EditTextDialog
 import com.self.profile.ui.theme.WarmJournalColors
+import com.self.profile.util.DateFormats
 import com.self.profile.util.LunarHelper
 import com.self.profile.util.parseHexColor
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.delay
 
 /**
@@ -416,7 +416,7 @@ private fun IdentityHeader(
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = person.mbti!!,
+                            text = person.mbti.orEmpty(),
                             style = MaterialTheme.typography.bodyMedium,
                             color = WarmJournalColors.PrimaryDarker
                         )
@@ -485,7 +485,7 @@ private fun BackgroundSection(bg: PersonalBackground, vm: SelfEditViewModel) {
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = birthday?.format(DateTimeFormatter.ofPattern("yyyy年M月d日")) ?: "—",
+                    text = birthday?.format(DateFormats.FULL) ?: "—",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -1119,7 +1119,7 @@ private fun NotesSection(list: List<Note>, vm: SelfEditViewModel) {
                     Text(text = n.content, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = LocalDate.ofEpochDay(n.date).format(DateTimeFormatter.ofPattern("yyyy年M月d日")),
+                        text = LocalDate.ofEpochDay(n.date).format(DateFormats.FULL),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1218,7 +1218,7 @@ private fun AddAnniversaryDialog(
                     Text(text = "日期：", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = date?.format(DateTimeFormatter.ofPattern("yyyy年M月d日")) ?: "选择",
+                        text = date?.format(DateFormats.FULL) ?: "选择",
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (date == null) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
                     )
@@ -1236,7 +1236,8 @@ private fun AddAnniversaryDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (title.isNotBlank() && date != null) onConfirm(title, date!!, type)
+                    val pickedDate = date
+                    if (title.isNotBlank() && pickedDate != null) onConfirm(title, pickedDate, type)
                     else onDismiss()
                 }
             ) { Text("保存") }
@@ -1267,7 +1268,7 @@ private fun AnniversariesSection(list: List<Anniversary>, vm: SelfEditViewModel)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = a.title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                     Text(
-                        text = LocalDate.ofEpochDay(a.date).format(DateTimeFormatter.ofPattern("yyyy年M月d日")) + " · ${a.type}",
+                        text = LocalDate.ofEpochDay(a.date).format(DateFormats.FULL) + " · ${a.type}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -347,7 +347,7 @@ private fun PersonCard(person: Person, onClick: () -> Unit) {
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = person.mbti!!,
+                    text = person.mbti.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     color = parseHexColor(person.avatarColor)?.let {
                         if (it.isLight()) WarmJournalColors.TextPrimary else it

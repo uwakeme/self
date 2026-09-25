@@ -41,9 +41,9 @@ import com.self.profile.domain.model.RepeatRule
 import com.self.profile.ui.components.dialogs.ChoicePickerDialog
 import com.self.profile.ui.components.dialogs.DatePickerSheet
 import com.self.profile.ui.components.dialogs.ReminderFormDialog
+import com.self.profile.util.DateFormats
 import com.self.profile.util.LunarHelper
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 /**
  * 添加/编辑提醒对话框。
@@ -107,7 +107,7 @@ fun ReminderEditorDialog(
     var showLunarDayPicker by remember { mutableStateOf(false) }
     var showAdvanced by remember { mutableStateOf(false) }
 
-    val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy年M月d日") }
+    val dateFormatter = DateFormats.FULL
     val canSave = title.isNotBlank()
 
     if (showDatePicker) {

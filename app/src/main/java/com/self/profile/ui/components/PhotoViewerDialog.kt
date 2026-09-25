@@ -43,9 +43,9 @@ import coil.compose.AsyncImage
 import com.self.profile.domain.model.Photo
 import com.self.profile.ui.components.dialogs.EditTextDialog
 import com.self.profile.ui.theme.WarmJournalColors
+import com.self.profile.util.DateFormats
 import java.io.File
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 /**
  * 照片全屏查看 + 编辑描述 + 删除。
@@ -122,7 +122,7 @@ fun PhotoViewerDialog(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = LocalDate.ofEpochDay(photo.createdAt / 86_400_000L)
-                            .format(DateTimeFormatter.ofPattern("yyyy年M月d日")),
+                            .format(DateFormats.FULL),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White
                     )
