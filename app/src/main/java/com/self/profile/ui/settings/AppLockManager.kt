@@ -182,7 +182,10 @@ class AppLockManager @Inject constructor(
             while (true) {
                 val remaining = until - SystemClock.elapsedRealtime()
                 if (remaining <= 0) {
+                    // 先发 0L 再发 null：StateFlow 会合并同步连续赋值，
+                    // 中间停一拍保证 UI 能观察到 0L（LockScreen 靠它触发自动重弹）
                     _lockoutRemainingMs.value = 0L
+                    delay(200)
                     onLockoutExpired()
                     return@launch
                 }

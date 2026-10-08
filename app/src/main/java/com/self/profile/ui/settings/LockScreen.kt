@@ -116,7 +116,14 @@ fun LockScreen(
                 if (state.requireDeviceCredentialOnly) "请使用设备 PIN / 密码" else "验证以继续"
             )
             .setAllowedAuthenticators(allowedAuthenticators)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
+
+        // API 26-29 没有 DEVICE_CREDENTIAL authenticator 组合，
+        // 降级模式改走旧的 setDeviceCredentialAllowed(true)（此时不允许设 negative button）
+        val legacyDeviceCredential = Build.VERSION.SDK_INT < Build.VERSION_CODES.R &&
+            state.requireDeviceCredentialOnly
+        if (legacyDeviceCredential) {
+            builder.setDeviceCredentialAllowed(true)
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
             allowedAuthenticators == BiometricManager.Authenticators.BIOMETRIC_WEAK
         ) {
             // 单独 BIOMETRIC_WEAK 或老版本必须设 negative button
