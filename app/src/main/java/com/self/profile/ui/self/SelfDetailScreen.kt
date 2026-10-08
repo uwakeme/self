@@ -132,7 +132,7 @@ private fun SelfContent(
     val loaded = state as? SelfDetailUiState.Loaded
     val moduleOrder = loaded?.moduleOrder ?: SelfModule.defaultOrder
     val orderedModules = remember(moduleOrder) {
-        moduleOrder.mapNotNull { idx -> SelfModule.values().getOrNull(idx - 1) }
+        SelfModule.orderedFrom(moduleOrder)
     }
     var editOrderMode by rememberSaveable { mutableStateOf(false) }
     val lazyListState = rememberLazyListState()
@@ -141,9 +141,12 @@ private fun SelfContent(
         derivedStateOf { lazyListState.firstVisibleItemIndex > 0 }
     }
 
-    // scrollTo 滚动：等首帧渲染完成再 animateScrollToItem
+    // scrollTo 滚动：只对同一个 scrollTo 值执行一次。
+    // 用"已处理"标志位而不是把 loaded 放进 key——loaded 每次编辑都会产生新实例，
+    // 那样用户此后每次保存都会被拽回目标 section。
+    val scrollHandled = remember(scrollTo) { mutableStateOf(false) }
     LaunchedEffect(scrollTo, loaded) {
-        if (scrollTo == null || loaded == null) return@LaunchedEffect
+        if (scrollTo == null || loaded == null || scrollHandled.value) return@LaunchedEffect
         val targetModule = when (scrollTo) {
             "notes" -> SelfModule.NOTES
             "anniversaries" -> SelfModule.ANNIVERSARIES
@@ -155,6 +158,7 @@ private fun SelfContent(
             // 所以 module i 的 item index = i + 2
             delay(120)  // 等首帧布局完成
             lazyListState.animateScrollToItem(index = moduleIdx + 2)
+            scrollHandled.value = true
         }
     }
 
@@ -514,8 +518,8 @@ private fun BackgroundSection(bg: PersonalBackground, vm: SelfEditViewModel) {
             )
         }
 
-        EditableKV("幸运数字", bg.luckyNumbers.joinToString(", "), vm, leadingIcon = Icons.Filled.Star) { newVal: String ->
-            val list = newVal.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        EditableKV("幸运数字", bg.luckyNumbers.joinToString(", "), vm, leadingIcon = Icons.Filled.Star) { newVal: String? ->
+            val list = newVal.orEmpty().split(",").map { it.trim() }.filter { it.isNotBlank() }
             vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(luckyNumbers = list)) }
         }
         EditableKV("大学", bg.university, vm, leadingIcon = Icons.Filled.School) { newVal -> vm.updatePerson { it.copy(personalBackground = it.personalBackground.copy(university = newVal)) } }
@@ -545,7 +549,7 @@ private fun EditableKV(
     value: String?,
     vm: SelfEditViewModel,
     leadingIcon: ImageVector? = null,
-    onSave: (String) -> Unit
+    onSave: (String?) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     if (showDialog) {
@@ -554,8 +558,7 @@ private fun EditableKV(
             initialValue = value.orEmpty(),
             placeholder = "点击输入",
             onConfirm = { newVal ->
-                val nonEmpty = newVal.trim()
-                if (nonEmpty.isNotEmpty()) onSave(nonEmpty)
+                onSave(newVal.trim().takeIf { it.isNotEmpty() })
             },
             onDismiss = { showDialog = false }
         )
@@ -1182,11 +1185,12 @@ private fun AddAnniversaryDialog(
     var type by remember { mutableStateOf("纪念日") }
     var showDate by remember { mutableStateOf(false) }
     var showType by remember { mutableStateOf(false) }
+    var invalid by remember { mutableStateOf(false) }
 
     if (showDate) {
         DatePickerSheet(
             initialDate = date ?: LocalDate.now(),
-            onConfirm = { d -> date = d; showDate = false },
+            onConfirm = { d -> date = d; showDate = false; invalid = false },
             onDismiss = { showDate = false }
         )
     }
@@ -1207,9 +1211,13 @@ private fun AddAnniversaryDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { title = it },
+                    onValueChange = { title = it; invalid = false },
                     label = { Text("标题") },
-                    singleLine = true
+                    singleLine = true,
+                    isError = invalid && title.isBlank(),
+                    supportingText = if (invalid && title.isBlank()) {
+                        { Text("请填写标题") }
+                    } else null
                 )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -1221,6 +1229,13 @@ private fun AddAnniversaryDialog(
                         text = date?.format(DateFormats.FULL) ?: "选择",
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (date == null) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                if (invalid && date == null) {
+                    Text(
+                        text = "请选择日期",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
                 Row(
@@ -1238,7 +1253,7 @@ private fun AddAnniversaryDialog(
                 onClick = {
                     val pickedDate = date
                     if (title.isNotBlank() && pickedDate != null) onConfirm(title, pickedDate, type)
-                    else onDismiss()
+                    else invalid = true
                 }
             ) { Text("保存") }
         },
@@ -1275,6 +1290,17 @@ private fun AnniversariesSection(list: List<Anniversary>, vm: SelfEditViewModel)
                 }
                 IconButton(onClick = { showReminderForm = true }) {
                     Icon(Icons.Filled.Notifications, contentDescription = "提醒", tint = WarmJournalColors.Primary)
+                }
+                IconButton(
+                    onClick = { vm.removeAnniversary(a.id) },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = "删除纪念日",
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(14.dp)
+                    )
                 }
             }
         }

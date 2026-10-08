@@ -221,29 +221,29 @@ private fun PersonContent(
                 state = lazyListState,
                 modifier = Modifier.fillMaxSize()
             ) {
-                item { PersonHeader(person, vm) }
+                item(key = "person-header") { PersonHeader(person, vm) }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("个人背景") { BackgroundSection(person.personalBackground, vm) } }
+                item(key = "sec-background") { SectionWrap("个人背景") { BackgroundSection(person.personalBackground, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("身体数据") { BodySection(person.bodyData, vm) } }
+                item(key = "sec-body") { SectionWrap("身体数据") { BodySection(person.bodyData, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("尺码信息") { SizeSection(person.sizeInfo, vm) } }
+                item(key = "sec-size") { SectionWrap("尺码信息") { SizeSection(person.sizeInfo, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("喜欢的事物") { CategorizedSection(person.thingsLiked, isLiked = true, vm = vm) } }
+                item(key = "sec-liked") { SectionWrap("喜欢的事物") { CategorizedSection(person.thingsLiked, isLiked = true, vm = vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("不喜欢的事物") { CategorizedSection(person.thingsDisliked, isLiked = false, vm = vm) } }
+                item(key = "sec-disliked") { SectionWrap("不喜欢的事物") { CategorizedSection(person.thingsDisliked, isLiked = false, vm = vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("性格分析") { PersonalitySection(person.personalityAnalysis, vm) } }
+                item(key = "sec-personality") { SectionWrap("性格分析") { PersonalitySection(person.personalityAnalysis, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("理想型") { IdealTypeSection(person.idealType, vm) } }
+                item(key = "sec-ideal") { SectionWrap("理想型") { IdealTypeSection(person.idealType, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("憧憬与目标") { AspirationsSection(person.aspirations, vm) } }
+                item(key = "sec-aspirations") { SectionWrap("憧憬与目标") { AspirationsSection(person.aspirations, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("愿望清单") { WishListSection(person.wishList, vm) } }
+                item(key = "sec-wishes") { SectionWrap("愿望清单") { WishListSection(person.wishList, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("人生轨迹") { LifeJourneySection(person.lifeJourney, vm) } }
+                item(key = "sec-journey") { SectionWrap("人生轨迹") { LifeJourneySection(person.lifeJourney, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("照片墙") {
+                item(key = "sec-photos") { SectionWrap("照片墙") {
                     PhotosSection(
                         photos = person.photos,
                         onAddPhoto = { uri -> vm.addPhoto(uri) },
@@ -252,15 +252,15 @@ private fun PersonContent(
                     )
                 } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("互动记录") { InteractionsSection(person.interactionNotes, vm) } }
+                item(key = "sec-interactions") { SectionWrap("互动记录") { InteractionsSection(person.interactionNotes, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("共同点") { CommonGroundsSection(person.commonGrounds, vm) } }
+                item(key = "sec-common") { SectionWrap("共同点") { CommonGroundsSection(person.commonGrounds, vm) } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item { SectionWrap("纪念日", action = { AddAnniversaryTrigger(vm) }) {
-                    AnniversariesSection(person.anniversaries)
+                item(key = "sec-anniversaries") { SectionWrap("纪念日", action = { AddAnniversaryTrigger(vm) }) {
+                    AnniversariesSection(person.anniversaries, vm)
                 } }
                 item { Spacer(Modifier.height(8.dp)) }
-                item {
+                item(key = "sec-reminders") {
                     SectionWrap("相关提醒", action = { showReminderEditor = true }) {
                         RemindersSection(
                             reminders = reminders,
@@ -510,7 +510,7 @@ private fun EditableKV(
     value: String?,
     vm: PersonDetailViewModel,
     leadingIcon: ImageVector? = null,
-    onSave: (String) -> Unit
+    onSave: (String?) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     if (showDialog) {
@@ -519,8 +519,7 @@ private fun EditableKV(
             initialValue = value.orEmpty(),
             placeholder = "点击输入",
             onConfirm = { newVal ->
-                val nonEmpty = newVal.trim()
-                if (nonEmpty.isNotEmpty()) onSave(nonEmpty)
+                onSave(newVal.trim().takeIf { it.isNotEmpty() })
             },
             onDismiss = { showDialog = false }
         )
@@ -559,35 +558,35 @@ private fun BodySection(b: BodyData, vm: PersonDetailViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         NumberKV("血型", b.bloodType, vm) { newVal -> vm.updatePerson { it.copy(bodyData = it.bodyData.copy(bloodType = newVal)) } }
         NumberKV("身高 (cm)", b.height?.toInt()?.toString(), vm) { newVal ->
-            val n = newVal.toIntOrNull()
+            val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(height = n?.toFloat())) }
         }
         NumberKV("当前体重 (kg)", b.weight?.toInt()?.toString(), vm) { newVal ->
-            val n = newVal.toIntOrNull()
+            val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(weight = n?.toFloat())) }
         }
         NumberKV("肩宽 (cm)", b.shoulderWidth?.toInt()?.toString(), vm) { newVal ->
-            val n = newVal.toIntOrNull()
+            val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(shoulderWidth = n?.toFloat())) }
         }
         NumberKV("臂展 (cm)", b.armSpan?.toInt()?.toString(), vm) { newVal ->
-            val n = newVal.toIntOrNull()
+            val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(armSpan = n?.toFloat())) }
         }
         NumberKV("胸围 (cm)", b.chest?.toInt()?.toString(), vm) { newVal ->
-            val n = newVal.toIntOrNull()
+            val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(chest = n?.toFloat())) }
         }
         NumberKV("腰围 (cm)", b.waist?.toInt()?.toString(), vm) { newVal ->
-            val n = newVal.toIntOrNull()
+            val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(waist = n?.toFloat())) }
         }
         NumberKV("臀围 (cm)", b.hip?.toInt()?.toString(), vm) { newVal ->
-            val n = newVal.toIntOrNull()
+            val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(hip = n?.toFloat())) }
         }
         NumberKV("臂围 (cm)", b.armGirth?.toInt()?.toString(), vm) { newVal ->
-            val n = newVal.toIntOrNull()
+            val n = newVal?.toIntOrNull()
             vm.updatePerson { it.copy(bodyData = it.bodyData.copy(armGirth = n?.toFloat())) }
         }
     }
@@ -598,7 +597,7 @@ private fun NumberKV(
     label: String,
     value: String?,
     vm: PersonDetailViewModel,
-    onSave: (String) -> Unit
+    onSave: (String?) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     if (showDialog) {
@@ -608,8 +607,7 @@ private fun NumberKV(
             placeholder = "数字",
             keyboardType = KeyboardType.Number,
             onConfirm = { newVal ->
-                val nonEmpty = newVal.trim()
-                if (nonEmpty.isNotEmpty()) onSave(nonEmpty)
+                onSave(newVal.takeIf { it.isNotBlank() })
             },
             onDismiss = { showDialog = false }
         )
@@ -649,7 +647,7 @@ private fun ChoiceKV(
     value: String?,
     options: List<String>,
     vm: PersonDetailViewModel,
-    onSave: (String) -> Unit
+    onSave: (String?) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     if (showDialog) {
@@ -657,7 +655,7 @@ private fun ChoiceKV(
             title = "选择$label",
             options = listOf("") + options,
             selected = value,
-            onConfirm = { picked -> onSave(picked.takeIf { it.isNotBlank() } ?: "") },
+            onConfirm = { picked -> onSave(picked.takeIf { it.isNotBlank() }) },
             onDismiss = { showDialog = false }
         )
     }
@@ -759,8 +757,7 @@ private fun PersonalitySection(text: String?, vm: PersonDetailViewModel) {
             initialValue = text.orEmpty(),
             placeholder = "描述其性格…",
             onConfirm = { newVal ->
-                val nonEmpty = newVal.trim()
-                if (nonEmpty.isNotEmpty()) vm.updatePerson { it.copy(personalityAnalysis = nonEmpty) }
+                vm.updatePerson { it.copy(personalityAnalysis = newVal.takeIf { v -> v.isNotBlank() }) }
             },
             onDismiss = { showDialog = false }
         )
@@ -781,8 +778,7 @@ private fun IdealTypeSection(text: String?, vm: PersonDetailViewModel) {
             initialValue = text.orEmpty(),
             placeholder = "他/她理想型是…",
             onConfirm = { newVal ->
-                val nonEmpty = newVal.trim()
-                if (nonEmpty.isNotEmpty()) vm.updatePerson { it.copy(idealType = nonEmpty) }
+                vm.updatePerson { it.copy(idealType = newVal.takeIf { v -> v.isNotBlank() }) }
             },
             onDismiss = { showDialog = false }
         )
@@ -1141,11 +1137,12 @@ private fun AddAnniversaryDialog(
     var type by remember { mutableStateOf("纪念日") }
     var showDate by remember { mutableStateOf(false) }
     var showType by remember { mutableStateOf(false) }
+    var invalid by remember { mutableStateOf(false) }
 
     if (showDate) {
         DatePickerSheet(
             initialDate = date ?: LocalDate.now(),
-            onConfirm = { d -> date = d; showDate = false },
+            onConfirm = { d -> date = d; showDate = false; invalid = false },
             onDismiss = { showDate = false }
         )
     }
@@ -1164,7 +1161,16 @@ private fun AddAnniversaryDialog(
         title = { Text("添加纪念日") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("标题") }, singleLine = true)
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it; invalid = false },
+                    label = { Text("标题") },
+                    singleLine = true,
+                    isError = invalid && title.isBlank(),
+                    supportingText = if (invalid && title.isBlank()) {
+                        { Text("请填写标题") }
+                    } else null
+                )
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { showDate = true }) {
                     Text(text = "日期：", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(8.dp))
@@ -1172,6 +1178,13 @@ private fun AddAnniversaryDialog(
                         text = date?.format(DateFormats.FULL) ?: "选择",
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (date == null) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                if (invalid && date == null) {
+                    Text(
+                        text = "请选择日期",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { showType = true }) {
@@ -1185,7 +1198,7 @@ private fun AddAnniversaryDialog(
             TextButton(onClick = {
                 val pickedDate = date
                 if (title.isNotBlank() && pickedDate != null) onConfirm(title, pickedDate, type)
-                else onDismiss()
+                else invalid = true
             }) { Text("保存") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
@@ -1193,13 +1206,23 @@ private fun AddAnniversaryDialog(
 }
 
 @Composable
-private fun AnniversariesSection(list: List<Anniversary>) {
+private fun AnniversariesSection(list: List<Anniversary>, vm: PersonDetailViewModel) {
     if (list.isEmpty()) {
         EmptyState(title = "还没有纪念日", description = "点击 + 添加重要日期")
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         list.forEach { a ->
+            var showReminderForm by remember { mutableStateOf(false) }
+            if (showReminderForm) {
+                com.self.profile.ui.components.dialogs.ReminderFormDialog(
+                    onConfirm = { advanceDays, time, repeat, notes ->
+                        vm.addReminderForAnniversary(a.id, advanceDays, time, repeat, notes)
+                        showReminderForm = false
+                    },
+                    onDismiss = { showReminderForm = false }
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = a.title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
@@ -1209,8 +1232,23 @@ private fun AnniversariesSection(list: List<Anniversary>) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = { }) {
+                IconButton(onClick = { showReminderForm = true }) {
                     Icon(Icons.Filled.Notifications, contentDescription = "提醒", tint = WarmJournalColors.Primary)
+                }
+                IconButton(
+                    onClick = {
+                        vm.updatePerson { p ->
+                            p.copy(anniversaries = p.anniversaries.filter { it.id != a.id })
+                        }
+                    },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = "删除纪念日",
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(14.dp)
+                    )
                 }
             }
         }

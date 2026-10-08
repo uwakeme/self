@@ -51,11 +51,11 @@ class GlobalSearchViewModel @Inject constructor(
 
     @OptIn(FlowPreview::class)
     val results: StateFlow<List<SearchHit>> = combine(
-        _query,
+        _query.debounce(120),
         personRepo.observeAll()
     ) { q, people ->
         searchAll(people, q.trim())
-    }.debounce(120).stateIn(
+    }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = emptyList()

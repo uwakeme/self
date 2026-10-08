@@ -15,7 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -142,7 +142,12 @@ fun GlobalSearchScreen(
                                         modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 4.dp)
                                     )
                                 }
-                                items(group, key = { "${it.kind.name}-${it.person.id}-${it.title}-${it.snippet}" }) { hit ->
+                                // key 带索引：同一人同类下两条内容完全相同的记录（重复笔记等）
+                                // 会让纯内容 key 撞车，导致 LazyColumn 崩溃
+                                itemsIndexed(
+                                    group,
+                                    key = { i, hit -> "$i-${hit.kind.name}-${hit.person.id}" }
+                                ) { _, hit ->
                                     SearchHitRow(hit = hit, onClick = { onOpenPerson(hit.person) })
                                     HorizontalDivider(
                                         color = MaterialTheme.colorScheme.outlineVariant,
