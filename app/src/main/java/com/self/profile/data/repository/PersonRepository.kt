@@ -17,8 +17,11 @@ import com.self.profile.domain.model.Photo
 import com.self.profile.domain.model.RelationshipType
 import com.self.profile.domain.model.SizeInfo
 import com.self.profile.domain.model.WishItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.builtins.ListSerializer
 import javax.inject.Inject
@@ -29,32 +32,43 @@ import javax.inject.Singleton
  *
  * - 提供 Flow<List<Person>> 等 UI 直接消费的领域模型
  * - 在内部做 entity ↔ domain 转换（嵌套 JSON 解析）
+ *
+ * 转换含 11 个 JSON 列的编解码，全部下放 Dispatchers.Default，
+ * 避免在 viewModelScope（主线程）收集时卡 UI。
  */
 @Singleton
 class PersonRepository @Inject constructor(
     private val dao: PersonDao
 ) {
 
-    fun observeAll(): Flow<List<Person>> = dao.observeAll().map { it.map(::toDomain) }
+    fun observeAll(): Flow<List<Person>> =
+        dao.observeAll().map { it.map(::toDomain) }.flowOn(Dispatchers.Default)
 
-    fun observeSelf(): Flow<Person?> = dao.observeSelf().map { it?.let(::toDomain) }
+    fun observeSelf(): Flow<Person?> =
+        dao.observeSelf().map { it?.let(::toDomain) }.flowOn(Dispatchers.Default)
 
-    fun observeById(id: String): Flow<Person?> = dao.observeById(id).map { it?.let(::toDomain) }
+    fun observeById(id: String): Flow<Person?> =
+        dao.observeById(id).map { it?.let(::toDomain) }.flowOn(Dispatchers.Default)
 
     fun observeByRelationship(type: RelationshipType): Flow<List<Person>> =
         dao.observeByRelationship(type.label).map { it.map(::toDomain) }
+            .flowOn(Dispatchers.Default)
 
     fun searchByName(query: String): Flow<List<Person>> =
-        dao.searchByName(query).map { it.map(::toDomain) }
+        dao.searchByName(query).map { it.map(::toDomain) }.flowOn(Dispatchers.Default)
 
     fun countByRelationship(type: RelationshipType): Flow<Int> =
         dao.countByRelationship(type.label)
 
     fun countOthers(): Flow<Int> = dao.countOthers()
 
-    suspend fun upsert(person: Person) = dao.insert(toEntity(person))
+    suspend fun upsert(person: Person) = withContext(Dispatchers.Default) {
+        dao.insert(toEntity(person))
+    }
 
-    suspend fun upsertAll(persons: List<Person>) = dao.insertAll(persons.map(::toEntity))
+    suspend fun upsertAll(persons: List<Person>) = withContext(Dispatchers.Default) {
+        dao.insertAll(persons.map(::toEntity))
+    }
 
     suspend fun updateLastViewed(id: String, timestamp: Long) =
         dao.updateLastViewed(id, timestamp)
@@ -68,7 +82,8 @@ class PersonRepository @Inject constructor(
 
     // ====== 回收站（软删除） ======
 
-    fun observeDeleted(): Flow<List<Person>> = dao.observeDeleted().map { it.map(::toDomain) }
+    fun observeDeleted(): Flow<List<Person>> =
+        dao.observeDeleted().map { it.map(::toDomain) }.flowOn(Dispatchers.Default)
 
     fun countDeleted(): Flow<Int> = dao.countDeleted()
 
@@ -80,7 +95,9 @@ class PersonRepository @Inject constructor(
 
     /** 回收站彻底删除前取照片路径用 */
     suspend fun getDeletedBefore(timestamp: Long): List<Person> =
-        dao.getDeletedBefore(timestamp).map(::toDomain)
+        withContext(Dispatchers.Default) {
+            dao.getDeletedBefore(timestamp).map(::toDomain)
+        }
 
     // ====== 转换层 ======
 

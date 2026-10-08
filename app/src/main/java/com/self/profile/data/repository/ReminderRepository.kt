@@ -5,7 +5,9 @@ import com.self.profile.data.local.entity.ReminderEntity
 import com.self.profile.domain.model.Reminder
 import com.self.profile.domain.model.ReminderType
 import com.self.profile.domain.model.RepeatRule
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,12 +20,14 @@ class ReminderRepository @Inject constructor(
     private val dao: ReminderDao
 ) {
 
-    fun observeAll(): Flow<List<Reminder>> = dao.observeAll().map { it.map(::toDomain) }
+    fun observeAll(): Flow<List<Reminder>> =
+        dao.observeAll().map { it.map(::toDomain) }.flowOn(Dispatchers.Default)
 
     fun observeByPerson(personId: String): Flow<List<Reminder>> =
-        dao.observeByPerson(personId).map { it.map(::toDomain) }
+        dao.observeByPerson(personId).map { it.map(::toDomain) }.flowOn(Dispatchers.Default)
 
-    fun observeEnabled(): Flow<List<Reminder>> = dao.observeEnabled().map { it.map(::toDomain) }
+    fun observeEnabled(): Flow<List<Reminder>> =
+        dao.observeEnabled().map { it.map(::toDomain) }.flowOn(Dispatchers.Default)
 
     fun observeCount(): Flow<Int> = dao.observeCount()
 
@@ -49,7 +53,8 @@ class ReminderRepository @Inject constructor(
 
     // ====== 回收站（软删除） ======
 
-    fun observeDeleted(): Flow<List<Reminder>> = dao.observeDeleted().map { it.map(::toDomain) }
+    fun observeDeleted(): Flow<List<Reminder>> =
+        dao.observeDeleted().map { it.map(::toDomain) }.flowOn(Dispatchers.Default)
 
     fun countDeleted(): Flow<Int> = dao.countDeleted()
 
