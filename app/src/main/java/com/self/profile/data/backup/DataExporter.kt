@@ -123,6 +123,8 @@ class DataExporter @Inject constructor(
         val remindersBefore = reminderRepo.observeAll().first().size
         val photosBefore = photoStorage.photosDir().listFiles()?.size ?: 0
 
+        // 先撤掉全部 WorkManager 调度，再清数据——否则留下触发时读不到数据的孤儿任务
+        com.self.profile.work.ReminderScheduler.cancelAll(appContext)
         reminderRepo.deleteAll()
         personRepo.deleteAll()
         photoStorage.photosDir().listFiles()?.forEach { it.delete() }

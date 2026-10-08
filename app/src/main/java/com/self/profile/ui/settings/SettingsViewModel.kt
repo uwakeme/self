@@ -22,14 +22,17 @@ import com.self.profile.util.ReminderCalc
 import com.self.profile.work.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 
@@ -65,7 +68,18 @@ class SettingsViewModel @Inject constructor(
     private val _typeFilter = MutableStateFlow(ReminderTab.ALL)
     val typeFilter: StateFlow<ReminderTab> = _typeFilter.asStateFlow()
 
-    private val today = LocalDate.now().toEpochDay()
+    /** 每天 0 点发射一次新日期：跨午夜存活时"7 天内"窗口不能用 VM 构造时的旧日期 */
+    private val todayFlow = flow {
+        while (true) {
+            val today = LocalDate.now()
+            emit(today.toEpochDay())
+            val nextMidnight = today.plusDays(1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+            delay((nextMidnight - System.currentTimeMillis()).coerceAtLeast(1_000L))
+        }
+    }
 
     val state: StateFlow<SettingsUiState> = combine(
         combine(
@@ -75,8 +89,9 @@ class SettingsViewModel @Inject constructor(
         ) { reminders, total, enabledCount -> Triple(reminders, total, enabledCount) },
         personRepo.observeAll(),
         settingsStore.settings,
-        _typeFilter
-    ) { triple, allPeople, settings, tab ->
+        _typeFilter,
+        todayFlow
+    ) { triple, allPeople, settings, tab, today ->
         val (reminders, total, enabledCount) = triple
         val personById = allPeople.associateBy { it.id }
         // 倒计时用"下一次正日"：农历 / 跨年的重复提醒 reminder.date 可能已过期
@@ -133,7 +148,21 @@ class SettingsViewModel @Inject constructor(
 
     fun toggleEnabled(reminderId: String, enabled: Boolean) {
         viewModelScope.launch {
-            reminderRepo.setEnabled(reminderId, enabled, System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            reminderRepo.setEnabled(reminderId, enabled, now)
+            if (!enabled) {
+                ReminderScheduler.cancel(appContext, reminderId)
+                return@launch
+            }
+            // 开启时要重新挂上 Worker（否则到点不响，只能等下次冷启动重注册）；
+            // 一次性提醒已过期（无下次触发）直接关掉，不留永不触发的僵尸
+            val reminder = reminderRepo.getById(reminderId) ?: return@launch
+            val next = ReminderCalc.nextTriggerMillis(reminder)
+            if (next != null) {
+                ReminderScheduler.scheduleReminder(appContext, reminderId, next)
+            } else {
+                reminderRepo.setEnabled(reminderId, false, now)
+            }
         }
     }
 
@@ -217,6 +246,7 @@ class SettingsViewModel @Inject constructor(
      * 导出 zip 备份（含照片）到 SAF 选定的位置。完成后 [exportState] 变 Success/Failure。
      */
     fun exportData(uri: Uri) {
+        if (_exportState.value is ExportState.Running) return  // 防重入
         viewModelScope.launch {
             _exportState.value = ExportState.Running
             try {
@@ -245,6 +275,7 @@ class SettingsViewModel @Inject constructor(
      * 确认导入：恢复前自动对当前数据做安全备份（cache），成功后重挂提醒调度。
      */
     fun confirmImport(uri: Uri) {
+        if (_importState.value is ImportState.Running) return  // 防重入
         _pendingImportUri.value = null
         viewModelScope.launch {
             _importState.value = ImportState.Running
@@ -268,6 +299,7 @@ class SettingsViewModel @Inject constructor(
      * 否则 UI 会一直显示结果对话框。
      */
     fun clearAllData() {
+        if (_clearState.value is ClearState.Running) return  // 防重入
         viewModelScope.launch {
             _clearState.value = ClearState.Running
             try {

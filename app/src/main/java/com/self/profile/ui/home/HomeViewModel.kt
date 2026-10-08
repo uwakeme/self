@@ -9,11 +9,14 @@ import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.Reminder
 import com.self.profile.util.ReminderCalc
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -29,14 +32,29 @@ class HomeViewModel @Inject constructor(
     settingsStore: SettingsDataStore
 ) : ViewModel() {
 
-    private val today = LocalDate.now()
+    /**
+     * 每天 0 点发射一次新日期。app 跨午夜存活时"30 天内 / 本月"窗口
+     * 不能继续用 VM 构造时缓存的旧日期。
+     */
+    private val todayFlow = flow {
+        while (true) {
+            val today = LocalDate.now()
+            emit(today)
+            val nextMidnight = today.plusDays(1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+            delay((nextMidnight - System.currentTimeMillis()).coerceAtLeast(1_000L))
+        }
+    }
 
     val state: StateFlow<HomeUiState> = combine(
         personRepo.observeSelf(),
         personRepo.observeAll(),
         reminderRepo.observeEnabled(),
-        settingsStore.settings
-    ) { self, allPeople, enabledReminders, settings ->
+        settingsStore.settings,
+        todayFlow
+    ) { self, allPeople, enabledReminders, settings, today ->
         val others = allPeople.filter { !it.isSelf }
         val personById = allPeople.associateBy { it.id }
         // 近期 = 下一次正日在未来 30 天内（农历 / 跨年提醒按重算日期过滤）

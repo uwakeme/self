@@ -22,5 +22,20 @@ enum class SelfModule(val title: String) {
 
     companion object {
         val defaultOrder: List<Int> = values().map { it.ordinal + 1 }
+
+        /**
+         * 持久化的 order → 实际渲染顺序。做两层归一化：
+         * 1. 丢弃越界 / 无效 id；
+         * 2. 把缺失的模块（新增枚举、旧版本存档）追加到末尾（AC-016-8）。
+         *
+         * UI 与 VM 统一从这里取渲染顺序，保证 moveModule 的索引语义一致。
+         */
+        fun orderedFrom(order: List<Int>): List<SelfModule> {
+            val known = order.mapNotNull { idx -> values().getOrNull(idx - 1) }
+            return known + values().filter { it !in known }
+        }
+
+        /** 渲染顺序 → 可持久化 order */
+        fun orderOf(ordered: List<SelfModule>): List<Int> = ordered.map { it.ordinal + 1 }
     }
 }

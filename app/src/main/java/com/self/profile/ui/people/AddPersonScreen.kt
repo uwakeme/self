@@ -154,13 +154,18 @@ fun AddPersonScreen(
             // 保存按钮
             Button(
                 onClick = {
-                    viewModel.save { person ->
-                        // 用 Toast 而非 Snackbar：Snackbar 依赖当前 Scaffold 的 SnackbarHost，
-                        // popBackStack 后 Composable 销毁，Snackbar 会跟着消失；Toast 是 Window 级，
-                        // 跟 Composable 生命周期无关
-                        Toast.makeText(context, "已添加「${person.name}」", Toast.LENGTH_SHORT).show()
-                        onSaved()
-                    }
+                    viewModel.save(
+                        onSaved = { person ->
+                            // 用 Toast 而非 Snackbar：Snackbar 依赖当前 Scaffold 的 SnackbarHost，
+                            // popBackStack 后 Composable 销毁，Snackbar 会跟着消失；Toast 是 Window 级，
+                            // 跟 Composable 生命周期无关
+                            Toast.makeText(context, "已添加「${person.name}」", Toast.LENGTH_SHORT).show()
+                            onSaved()
+                        },
+                        onError = { msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 },
                 enabled = viewModel.isValid() && !saving,
                 colors = ButtonDefaults.buttonColors(

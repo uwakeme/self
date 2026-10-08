@@ -59,29 +59,34 @@ class AddPersonViewModel @Inject constructor(
     fun isValid(): Boolean = _form.value.name.isNotBlank()
 
     /**
-     * 保存新人物。返回 true 表示成功。
+     * 保存新人物。返回 true 表示成功；失败恢复可保存状态（不吞异常信息）。
      */
-    fun save(onSaved: (Person) -> Unit) {
+    fun save(onSaved: (Person) -> Unit, onError: (String) -> Unit = {}) {
         if (!isValid() || _saving.value) return
         _saving.value = true
         viewModelScope.launch {
-            val f = _form.value
-            val now = System.currentTimeMillis()
-            val newPerson = Person(
-                id = UUID.randomUUID().toString(),
-                name = f.name.trim(),
-                avatarColor = f.avatarColor,
-                avatarInitial = f.name.trim().take(1),
-                relationshipType = f.relationshipType,
-                mbti = f.mbti,
-                isSelf = false,
-                tags = f.tags,
-                createdAt = now,
-                updatedAt = now
-            )
-            personRepo.upsert(newPerson)
-            _saving.value = false
-            onSaved(newPerson)
+            try {
+                val f = _form.value
+                val now = System.currentTimeMillis()
+                val newPerson = Person(
+                    id = UUID.randomUUID().toString(),
+                    name = f.name.trim(),
+                    avatarColor = f.avatarColor,
+                    avatarInitial = f.name.trim().take(1),
+                    relationshipType = f.relationshipType,
+                    mbti = f.mbti,
+                    isSelf = false,
+                    tags = f.tags,
+                    createdAt = now,
+                    updatedAt = now
+                )
+                personRepo.upsert(newPerson)
+                onSaved(newPerson)
+            } catch (e: Exception) {
+                onError(e.message ?: "保存失败，请重试")
+            } finally {
+                _saving.value = false
+            }
         }
     }
 }

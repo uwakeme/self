@@ -27,8 +27,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
@@ -64,28 +67,37 @@ class PersonDetailViewModel @Inject constructor(
     )
 
     /**
-     * 通用更新：transform 现有 person，生成新 Person，自动更新 updatedAt，持久化。
+     * 串行化读-改-写：快速连续操作（勾选、添加）时每次都在锁内重读 DB 最新值，
+     * 避免旧快照整行覆盖丢掉前一次修改。
      */
-    fun updatePerson(transform: (Person) -> Person) {
-        val current = state.value
-        if (current !is PersonDetailUiState.Loaded) return
+    private val writeMutex = Mutex()
+
+    /**
+     * 通用更新：锁内读库最新 person → transform → 持久化（自动更新 updatedAt）。
+     *
+     * transform 返回 null 表示跳过本次写入（如校验不通过）。
+     */
+    fun updatePerson(transform: (Person) -> Person?) {
         viewModelScope.launch {
-            val updated = transform(current.person).copy(
-                updatedAt = System.currentTimeMillis()
-            )
-            personRepo.upsert(updated)
+            writeMutex.withLock {
+                val latest = personRepo.observeById(personId).first() ?: return@withLock
+                val updated = transform(latest)?.copy(
+                    updatedAt = System.currentTimeMillis()
+                ) ?: return@withLock
+                personRepo.upsert(updated)
+            }
         }
     }
 
     /**
-     * 进入详情页时更新 lastViewed_at（用于"最近查看"排序）。
+     * 进入详情页时更新 last_viewed_at（用于"最近查看"排序）。
+     * 直接按 personId 写，不依赖 UI state（state 首帧还是 Loading 时也能写上）。
      */
     fun markViewed() {
-        val current = state.value
-        if (current !is PersonDetailUiState.Loaded) return
-        if (current.person.isSelf) return
         viewModelScope.launch {
-            personRepo.updateLastViewed(current.person.id, System.currentTimeMillis())
+            val person = personRepo.observeById(personId).first() ?: return@launch
+            if (person.isSelf) return@launch
+            personRepo.updateLastViewed(person.id, System.currentTimeMillis())
         }
     }
 
@@ -174,16 +186,11 @@ class PersonDetailViewModel @Inject constructor(
 
     fun addCategory(isLiked: Boolean, category: String) {
         if (category.isBlank()) return
-        val current = state.value as? PersonDetailUiState.Loaded ?: return
-        val source = if (isLiked) current.person.thingsLiked else current.person.thingsDisliked
-        if (source.any { it.category == category }) return
-        val updated = if (isLiked) {
-            current.person.copy(thingsLiked = source + CategorizedItems(category, emptyList()))
-        } else {
-            current.person.copy(thingsDisliked = source + CategorizedItems(category, emptyList()))
-        }
-        viewModelScope.launch {
-            personRepo.upsert(updated.copy(updatedAt = System.currentTimeMillis()))
+        updatePerson { p ->
+            val source = if (isLiked) p.thingsLiked else p.thingsDisliked
+            if (source.any { it.category == category }) null
+            else if (isLiked) p.copy(thingsLiked = source + CategorizedItems(category, emptyList()))
+            else p.copy(thingsDisliked = source + CategorizedItems(category, emptyList()))
         }
     }
 
@@ -259,11 +266,23 @@ class PersonDetailViewModel @Inject constructor(
         }
     }
 
+    /** 先从 DB 摘除记录，落库成功后再删文件（文件删了就找不回，顺序不能反） */
     fun removePhoto(photoId: String) {
-        val current = state.value as? PersonDetailUiState.Loaded ?: return
-        val photo = current.person.photos.firstOrNull { it.id == photoId } ?: return
-        photoStorage.delete(photo.url)
-        updatePerson { p -> p.copy(photos = p.photos.filter { it.id != photoId }) }
+        viewModelScope.launch {
+            var removed: Photo? = null
+            writeMutex.withLock {
+                val latest = personRepo.observeById(personId).first() ?: return@withLock
+                val photo = latest.photos.firstOrNull { it.id == photoId } ?: return@withLock
+                personRepo.upsert(
+                    latest.copy(
+                        photos = latest.photos.filter { it.id != photoId },
+                        updatedAt = System.currentTimeMillis()
+                    )
+                )
+                removed = photo
+            }
+            removed?.let { photoStorage.delete(it.url) }
+        }
     }
 
     fun updatePhotoDescription(photoId: String, description: String) {
@@ -324,9 +343,48 @@ class PersonDetailViewModel @Inject constructor(
             if (enabled) {
                 ReminderCalc.nextTriggerMillis(reminder)?.let {
                     ReminderScheduler.scheduleReminder(appContext, reminderId, it)
-                }
+                } ?: reminderRepo.setEnabled(reminderId, false, System.currentTimeMillis())
             } else {
                 ReminderScheduler.cancel(appContext, reminderId)
+            }
+        }
+    }
+
+    /**
+     * 为该人物的指定纪念日添加一条提醒（生日/纪念日按正日 + 提前量调度）。
+     */
+    fun addReminderForAnniversary(
+        anniversaryId: String,
+        advanceDays: Int,
+        reminderTime: String,
+        repeat: RepeatRule,
+        notes: String
+    ) {
+        viewModelScope.launch {
+            val person = personRepo.observeById(personId).first() ?: return@launch
+            val ann = person.anniversaries.firstOrNull { it.id == anniversaryId } ?: return@launch
+            val now = System.currentTimeMillis()
+            val reminder = Reminder(
+                id = UUID.randomUUID().toString(),
+                personId = person.id,
+                type = ReminderType.fromLabel(ann.type),
+                title = ann.title,
+                date = ann.date,
+                advanceDays = advanceDays.coerceIn(0, 30),
+                reminderTime = reminderTime,
+                repeat = repeat,
+                enabled = true,
+                notes = notes.takeIf { it.isNotBlank() },
+                createdAt = now,
+                updatedAt = now
+            )
+            // 一次性提醒已过期（无下次触发）则建成即关闭，与冷启动重注册语义一致
+            val next = ReminderCalc.nextTriggerMillis(reminder)
+            reminderRepo.upsert(if (next == null) reminder.copy(enabled = false) else reminder)
+            if (next != null) {
+                ReminderScheduler.scheduleReminder(appContext, reminder.id, next)
+            } else {
+                ReminderScheduler.cancel(appContext, reminder.id)
             }
         }
     }

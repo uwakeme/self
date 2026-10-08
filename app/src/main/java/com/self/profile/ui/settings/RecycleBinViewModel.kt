@@ -47,19 +47,31 @@ class RecycleBinViewModel @Inject constructor(
         initialValue = RecycleBinUiState.empty()
     )
 
-    /** 恢复人物：人物 + 其关联提醒一起回到在册，已开启的提醒重新挂调度 */
+    /**
+     * 恢复人物：人物 + 「随人物一起被删」的提醒回到在册，已开启的提醒重新挂调度。
+     *
+     * 只恢复 deletedAt 与人物一致的提醒（人物软删时同一时间戳连带软删）；
+     * 用户更早单独删进回收站的提醒保持软删，不被连带复活。
+     */
     fun restorePerson(person: Person) {
         viewModelScope.launch {
             val now = System.currentTimeMillis()
             personRepo.restore(person.id, now)
-            reminderRepo.getByPersonAnyState(person.id).forEach { r ->
-                reminderRepo.restore(r.id, now)
-                if (r.enabled) {
-                    ReminderCalc.nextTriggerMillis(r)?.let {
-                        ReminderScheduler.scheduleReminder(appContext, r.id, it)
+            val personDeletedAt = person.deletedAt
+            reminderRepo.getByPersonAnyState(person.id)
+                .filter { r -> personDeletedAt != null && r.deletedAt == personDeletedAt }
+                .forEach { r ->
+                    reminderRepo.restore(r.id, now)
+                    if (r.enabled) {
+                        val next = ReminderCalc.nextTriggerMillis(r)
+                        if (next != null) {
+                            ReminderScheduler.scheduleReminder(appContext, r.id, next)
+                        } else {
+                            // 一次性且已过期：恢复为在册但关闭，不留永不触发的僵尸
+                            reminderRepo.setEnabled(r.id, false, now)
+                        }
                     }
                 }
-            }
         }
     }
 
@@ -70,13 +82,17 @@ class RecycleBinViewModel @Inject constructor(
         }
     }
 
-    /** 恢复提醒并重新调度 */
+    /** 恢复提醒并重新调度；一次性且已过期的恢复为在册但关闭 */
     fun restoreReminder(reminder: Reminder) {
         viewModelScope.launch {
-            reminderRepo.restore(reminder.id, System.currentTimeMillis())
+            val now = System.currentTimeMillis()
+            reminderRepo.restore(reminder.id, now)
             if (reminder.enabled) {
-                ReminderCalc.nextTriggerMillis(reminder)?.let {
-                    ReminderScheduler.scheduleReminder(appContext, reminder.id, it)
+                val next = ReminderCalc.nextTriggerMillis(reminder)
+                if (next != null) {
+                    ReminderScheduler.scheduleReminder(appContext, reminder.id, next)
+                } else {
+                    reminderRepo.setEnabled(reminder.id, false, now)
                 }
             }
         }
