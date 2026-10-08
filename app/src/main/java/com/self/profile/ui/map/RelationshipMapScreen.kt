@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.drawText
@@ -182,10 +183,16 @@ private fun RelationshipCanvas(
     )
 
     val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val baseNodePx = with(density) { 28.dp.toPx() }
+    val minNodePx = with(density) { 12.dp.toPx() }
+    val nodeGapPx = with(density) { 3.dp.toPx() }
 
     // 节点位置（Composed 阶段算好，Canvas 绘制 + 点击检测共享）
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     val nodePositions = remember { mutableStateMapOf<String, Offset>() }
+    // 每人实际节点半径：环上人多时收缩，防止重叠
+    val nodeRadii = remember { mutableStateMapOf<String, Float>() }
     val allPeople = remember(family, friend, colleague, classmate) {
         family + friend + colleague + classmate
     }
@@ -194,6 +201,7 @@ private fun RelationshipCanvas(
     LaunchedEffect(canvasSize, family, friend, colleague, classmate) {
         if (canvasSize.width == 0 || canvasSize.height == 0) {
             nodePositions.clear()
+            nodeRadii.clear()
             return@LaunchedEffect
         }
         val w = canvasSize.width.toFloat()
@@ -202,27 +210,37 @@ private fun RelationshipCanvas(
         val cy = h / 2f
         val familyR = w * 0.25f
         val friendR = w * 0.38f
-        val otherR = w * 0.48f
+        // 同事/同学同属外圈但错开半径，两类都多时不会互相穿插
+        val colleagueR = w * 0.48f
+        val classmateR = w * 0.44f
 
         val groups = listOf(
             family to familyR,
             friend to friendR,
-            colleague to otherR,
-            classmate to otherR
+            colleague to colleagueR,
+            classmate to classmateR
         )
         val newPositions = mutableMapOf<String, Offset>()
+        val newRadii = mutableMapOf<String, Float>()
         // 每环加 PI/4 偏移，避免少人时三环节点全堆在垂直轴上
         groups.forEachIndexed { ringIndex, (people, r) ->
             val ringOffset = ringIndex * (PI / 4)
+            // 环上相邻节点间距（弧长近似）不足时按需收缩节点半径，floor 到 minNodePx
+            val spacing = if (people.size >= 2) (2 * PI * r / people.size).toFloat() else Float.MAX_VALUE
+            val nodeR = (spacing / 2f - nodeGapPx)
+                .coerceIn(minNodePx, baseNodePx)
             people.forEachIndexed { i, person ->
                 val theta = ringOffset + (2 * PI * i / people.size.coerceAtLeast(1)) - PI / 2
                 val x = cx + r * cos(theta).toFloat()
                 val y = cy + r * sin(theta).toFloat()
                 newPositions[person.id] = Offset(x, y)
+                newRadii[person.id] = nodeR
             }
         }
         nodePositions.clear()
         nodePositions.putAll(newPositions)
+        nodeRadii.clear()
+        nodeRadii.putAll(newRadii)
     }
 
     Box(
@@ -231,9 +249,9 @@ private fun RelationshipCanvas(
             .onSizeChanged { canvasSize = it }
             .pointerInput(allPeople) {
                 detectTapGestures { tap ->
-                    // 找 36px 内最近的节点
+                    // 命中半径跟随节点实际大小（收缩后的小节点不该再用 36px 大命中域）
                     val hit = nodePositions.entries
-                        .filter { (tap - it.value).getDistance() < 36f }
+                        .filter { (tap - it.value).getDistance() < (nodeRadii[it.key] ?: baseNodePx) + 12f }
                         .minByOrNull { (tap - it.value).getDistance() }
                         ?.key
                     if (hit != null) {
@@ -249,7 +267,8 @@ private fun RelationshipCanvas(
             val cy = h / 2f
             val familyR = w * 0.25f
             val friendR = w * 0.38f
-            val otherR = w * 0.48f
+            val colleagueR = w * 0.48f
+            val classmateR = w * 0.44f
 
             // 背景渐变
             drawRect(
@@ -278,7 +297,7 @@ private fun RelationshipCanvas(
             )
             drawCircle(
                 color = WarmJournalColors.Border.copy(alpha = 0.20f),
-                radius = otherR,
+                radius = colleagueR,
                 center = Offset(cx, cy),
                 style = Stroke(width = 1f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 7f)))
             )
@@ -315,10 +334,11 @@ private fun RelationshipCanvas(
             // 节点位置 + 连线（用 Composed 阶段算好的位置）
             drawNodesAndConnections(
                 cx = cx, cy = cy,
-                familyR = familyR, friendR = friendR, otherR = otherR,
                 family = family, friend = friend, colleague = colleague, classmate = classmate,
                 textMeasurer = textMeasurer,
-                nodePositions = nodePositions
+                nodePositions = nodePositions,
+                nodeRadii = nodeRadii,
+                baseNodeRadius = baseNodePx
             )
         }
     }
@@ -326,21 +346,22 @@ private fun RelationshipCanvas(
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawNodesAndConnections(
     cx: Float, cy: Float,
-    familyR: Float, friendR: Float, otherR: Float,
     family: List<Person>, friend: List<Person>, colleague: List<Person>, classmate: List<Person>,
     textMeasurer: TextMeasurer,
-    nodePositions: Map<String, Offset>
+    nodePositions: Map<String, Offset>,
+    nodeRadii: Map<String, Float>,
+    baseNodeRadius: Float
 ) {
     val allByKind = listOf(
         // 家人：实线 → pathEffect 传 null（不能用 dashPathEffect(floatArrayOf(0f))，API 要求偶数长度会崩）
-        Triple(family, familyR, WarmJournalColors.Primary to (null to 2.5f)),
-        Triple(friend, friendR, WarmJournalColors.Info to (PathEffect.dashPathEffect(floatArrayOf(6f, 4f)) to 2f)),
-        Triple(colleague, otherR, WarmJournalColors.Success to (PathEffect.dashPathEffect(floatArrayOf(3f, 5f)) to 1.5f)),
-        Triple(classmate, otherR, WarmJournalColors.Warning to (PathEffect.dashPathEffect(floatArrayOf(3f, 5f)) to 1.5f))
+        family to (WarmJournalColors.Primary to (null to 2.5f)),
+        friend to (WarmJournalColors.Info to (PathEffect.dashPathEffect(floatArrayOf(6f, 4f)) to 2f)),
+        colleague to (WarmJournalColors.Success to (PathEffect.dashPathEffect(floatArrayOf(3f, 5f)) to 1.5f)),
+        classmate to (WarmJournalColors.Warning to (PathEffect.dashPathEffect(floatArrayOf(3f, 5f)) to 1.5f))
     )
 
     // 连线
-    allByKind.forEach { (people, _, styleInfo) ->
+    allByKind.forEach { (people, styleInfo) ->
         val (color, dashWidth) = styleInfo
         val (pathEffect, width) = dashWidth
         people.forEach { person ->
@@ -362,15 +383,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawNodesAndConnect
         }
     }
 
-    // 节点
+    // 节点（半径跟随环上密度收缩后的实际值）
     val nodeStyle = TextStyle(color = Color.White, fontSize = 12.sp)
-    allByKind.forEach { (people, _, styleInfo) ->
+    allByKind.forEach { (people, styleInfo) ->
         val (color, _) = styleInfo
         people.forEach { person ->
             val pos = nodePositions[person.id] ?: return@forEach
+            val nodeR = nodeRadii[person.id] ?: baseNodeRadius
             drawCircle(
                 color = color,
-                radius = 28f,
+                radius = nodeR,
                 center = pos
             )
             // 文字（用 textMeasurer 量实际尺寸后居中，避免硬编码 offset 在高密度屏溢出）
