@@ -1,5 +1,6 @@
 package com.self.profile
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -8,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
@@ -29,17 +32,23 @@ import javax.inject.Inject
  * 启用 edge-to-edge 后让顶/底系统栏沉浸，背景延伸到状态栏之后。
  *
  * 继承 FragmentActivity 以支持 androidx.biometric.BiometricPrompt。
+ * launchMode=singleTop：从通知 / 小组件点进来复用实例走 onNewIntent，保住返回栈。
  */
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
     @Inject lateinit var appLockManager: AppLockManager
 
+    /** 通知 / 小组件深链：reminderId 或 [EXTRA_OPEN_REMINDERS]，消费后由 AppNav 清空 */
+    private var reminderDeepLink by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // 启动屏（必须在 super.onCreate 之前）
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        reminderDeepLink = parseDeepLink(intent)
+
         setContent {
             val settingsVm: AppLockViewModel = hiltViewModel()
             val darkMode by settingsVm.darkMode.collectAsState()
@@ -81,7 +90,10 @@ class MainActivity : FragmentActivity() {
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Surface(modifier = Modifier.fillMaxSize()) {
-                        AppNav()
+                        AppNav(
+                            reminderDeepLink = reminderDeepLink,
+                            onReminderDeepLinkConsumed = { reminderDeepLink = null }
+                        )
                     }
                     if (isLocked) {
                         LockScreen(
@@ -101,5 +113,22 @@ class MainActivity : FragmentActivity() {
                 else -> {}
             }
         })
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        reminderDeepLink = parseDeepLink(intent)
+    }
+
+    private fun parseDeepLink(intent: Intent?): String? {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_REMINDERS, false) == true) {
+            return EXTRA_OPEN_REMINDERS
+        }
+        return intent?.getStringExtra(com.self.profile.work.ReminderWorker.EXTRA_REMINDER_ID)
+    }
+
+    companion object {
+        /** 桌面小组件点击：直达提醒中心（设置页） */
+        const val EXTRA_OPEN_REMINDERS = "extra_open_reminders"
     }
 }

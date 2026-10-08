@@ -93,7 +93,9 @@ object RecentWidgetUpdater {
             val pi = PendingIntent.getActivity(
                 context,
                 0,
-                Intent(context, MainActivity::class.java),
+                Intent(context, MainActivity::class.java)
+                    // 点击直达提醒中心（设置页），而不是只回到首页
+                    .putExtra(MainActivity.EXTRA_OPEN_REMINDERS, true),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             setOnClickPendingIntent(R.id.widget_root, pi)

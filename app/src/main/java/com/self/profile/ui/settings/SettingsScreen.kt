@@ -1,5 +1,8 @@
 package com.self.profile.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -42,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,10 +55,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.self.profile.BuildConfig
 import com.self.profile.data.backup.DataExporter
@@ -102,6 +111,23 @@ fun SettingsScreen(
     var editing by remember { mutableStateOf<Reminder?>(null) }
     var pendingDelete by remember { mutableStateOf<Reminder?>(null) }
 
+    // Android 13+ 通知运行时权限：不申请的话提醒到点全部静默
+    val context = LocalContext.current
+    var notifPermissionGranted by remember { mutableStateOf(checkNotifPermission(context)) }
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> notifPermissionGranted = granted }
+    // 用户可能去系统设置里改，回前台时刷新
+    DisposableEffect(context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notifPermissionGranted = checkNotifPermission(context)
+            }
+        }
+        (context as? LifecycleOwner)?.lifecycle?.addObserver(observer)
+        onDispose { (context as? LifecycleOwner)?.lifecycle?.removeObserver(observer) }
+    }
+
     // SAF：导出 = CreateDocument 自选保存位置；导入 = OpenDocument 选备份文件
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/zip")
@@ -135,6 +161,41 @@ fun SettingsScreen(
                 title = "设置",
                 subtitle = "提醒中心 · 数据 · 偏好"
             )
+
+            // 通知权限引导（Android 13+ 未授权时）
+            if (!notifPermissionGranted) {
+                Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    SectionCard(title = null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Filled.Notifications,
+                                contentDescription = null,
+                                tint = WarmJournalColors.Warning,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "通知权限未开启",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    "开启后提醒才能在通知栏弹出",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            TextButton(onClick = {
+                                notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }) { Text("去开启") }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
 
             // 统计概览
             Box(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -901,3 +962,9 @@ private fun DataManageAction(
         }
     }
 }
+
+/** Android 13 以下无需运行时权限；13+ 检查 POST_NOTIFICATIONS */
+private fun checkNotifPermission(context: android.content.Context): Boolean =
+    Build.VERSION.SDK_INT < 33 ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED

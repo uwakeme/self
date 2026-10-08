@@ -70,8 +70,15 @@ fun SelfBottomBar(navController: NavHostController) {
                 selected = selected,
                 onClick = {
                     // 标准 BottomNav 写法：popUpTo 起点 + saveState + restoreState
-                    // launchSingleTop 顶替"已经在当前 tab 不重复 push"的判断
-                    navController.navigate(tab.route.path) {
+                    // launchSingleTop 顶替"已经在当前 tab 不重复 push"的判断。
+                    // Self 的 path 是带占位符的 pattern（self?scrollTo={scrollTo}），
+                    // 不能直接 navigate 字面量，要走 build() 拿干净路径
+                    val target = if (tab.route is Route.Self) {
+                        Route.Self.build(null)
+                    } else {
+                        tab.route.path
+                    }
+                    navController.navigate(target) {
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }

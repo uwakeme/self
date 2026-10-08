@@ -3,13 +3,19 @@ package com.self.profile.ui.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.self.profile.MainActivity
+import com.self.profile.data.repository.ReminderRepository
 import com.self.profile.ui.home.HomeScreen
 import com.self.profile.ui.map.RelationshipMapScreen
 import com.self.profile.ui.people.AddPersonScreen
@@ -19,15 +25,54 @@ import com.self.profile.ui.self.SelfDetailScreen
 import com.self.profile.ui.search.GlobalSearchScreen
 import com.self.profile.ui.settings.RecycleBinScreen
 import com.self.profile.ui.settings.SettingsScreen
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+/** 深链辅助：reminderId → personId */
+@HiltViewModel
+class DeepLinkViewModel @Inject constructor(
+    private val reminderRepo: ReminderRepository
+) : ViewModel() {
+    suspend fun personIdOf(reminderId: String): String? =
+        reminderRepo.getById(reminderId)?.personId
+}
 
 /**
  * 应用顶层 NavHost。
  *
  * 用 Scaffold 包 5 Tab + BottomBar。子页面（人物详情、添加人物）走 NavHost 内层，
  * BottomBar 内部判断当前路由决定是否隐藏。
+ *
+ * [reminderDeepLink]：通知 / 小组件点击带来的入口标记，消费一次后由
+ * [onReminderDeepLinkConsumed] 清空。
  */
 @Composable
-fun AppNav(navController: NavHostController = rememberNavController()) {
+fun AppNav(
+    navController: NavHostController = rememberNavController(),
+    reminderDeepLink: String? = null,
+    onReminderDeepLinkConsumed: () -> Unit = {}
+) {
+    val deepLinkVm: DeepLinkViewModel = hiltViewModel()
+
+    // 深链只消费一次：人物提醒 → 人物详情；其余（自定义提醒 / 小组件）→ 提醒中心
+    LaunchedEffect(reminderDeepLink) {
+        val link = reminderDeepLink ?: return@LaunchedEffect
+        when (link) {
+            MainActivity.EXTRA_OPEN_REMINDERS ->
+                navController.navigate(Route.Settings.path)
+            else -> {
+                val personId = deepLinkVm.personIdOf(link)
+                if (personId != null) {
+                    navController.navigate(Route.PersonDetail.build(personId))
+                } else {
+                    navController.navigate(Route.Settings.path)
+                }
+            }
+        }
+        onReminderDeepLinkConsumed()
+    }
+
     Scaffold(
         bottomBar = { SelfBottomBar(navController) }
     ) { innerPadding ->
