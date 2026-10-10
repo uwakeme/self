@@ -25,7 +25,7 @@ import javax.inject.Inject
  * 启动时初始化：
  * - 通知渠道（Android 8.0+ 要求）
  * - WorkManager 配置（注入 Hilt 工厂）
- * - 种子数据（首次启动写入示例）
+ * - 种子数据（首次启动写入示例），必须先于提醒重注册完成
  * - 提醒重注册（遍历所有 enabled reminder 重新挂上 Worker）
  */
 @HiltAndroidApp
@@ -51,6 +51,10 @@ class SelfApp : Application(), Configuration.Provider {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private companion object {
+        const val TAG = "SelfApp"
+    }
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -60,9 +64,19 @@ class SelfApp : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        appScope.launch { seedData.seedIfEmpty() }
+
+        // 播种与重注册必须串行：reregisterAll() 读的是 DB 里的 enabled 列表，
+        // 若它先于 seedIfEmpty() 跑到空列表，种子写入的 3 条提醒这次冷启动就不会被排上 Worker，
+        // 得再等一次冷启动才响。
+        //
+        // 播种单独包 runCatching：SupervisorJob 只隔离兄弟协程，协程体内前一句抛异常会直接中止
+        // 后面的语句。不兜住的话，播种一失败重注册就跟着不跑，库里已有的提醒会白白失去调度。
+        appScope.launch {
+            runCatching { seedData.seedIfEmpty() }
+                .onFailure { Log.w(TAG, "写入种子数据失败", it) }
+            reminderReregistrator.reregisterAll()
+        }
         appScope.launch { recycleBinJanitor.purgeExpired() }
-        appScope.launch { reminderReregistrator.reregisterAll() }
         // 冷启动刷新桌面小组件（系统另有 30 分钟周期刷新兜底）
         appScope.launch {
             com.self.profile.widget.RecentWidgetUpdater.update(applicationContext, personRepo, reminderRepo)

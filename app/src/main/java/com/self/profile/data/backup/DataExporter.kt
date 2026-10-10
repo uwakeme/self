@@ -132,7 +132,8 @@ class DataExporter @Inject constructor(
         // 至少不会再有种子复活来二次污染。
         settingsStore.setUserInitialized(true)
 
-        // 先撤掉全部 WorkManager 调度，再清数据——否则留下触发时读不到数据的孤儿任务
+        // 先撤掉全部提醒调度，再清数据——否则留下触发时读不到数据的孤儿任务。
+        // cancelAll() 按 WorkManager tag 匹配，调度时给每条任务都打了通用 tag，撤得干净。
         com.self.profile.work.ReminderScheduler.cancelAll(appContext)
         reminderRepo.deleteAll()
         personRepo.deleteAll()
