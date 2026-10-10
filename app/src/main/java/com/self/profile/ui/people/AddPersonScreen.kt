@@ -178,7 +178,10 @@ fun AddPersonScreen(
                         }
                     )
                 },
-                enabled = viewModel.isValid() && !saving,
+                // 姓名为空时也允许点击：点击后由 attemptedSave 触发红字提示，
+                // 真正的写入拦截在 AddPersonViewModel.save() 的 `if (!isValid()) return` 守卫里。
+                // 别把 isValid() 搬回这里做 disabled——那会让 attemptedSave 永远点不到，红字变死代码
+                enabled = !saving,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = WarmJournalColors.Primary,
                     contentColor = WarmJournalColors.TextInverse,
