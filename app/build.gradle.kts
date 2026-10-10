@@ -143,8 +143,18 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.mockk)
+
+    // 设备端测试（AndroidJUnit4 / JUnit 4，与上面的 JVM 单测是两套体系，不要混）
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.espresso.core)
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
+tasks.withType<Test>().configureEach {
+    // 只给 JVM 单测开 JUnit 5 平台。instrumentation 测试走 AndroidJUnit4（JUnit 4），
+    // 万一被 useJUnitPlatform() 接管，androidTest 用例会被静默跳过（build 照样绿）。
+    if (name.endsWith("UnitTest")) {
+        useJUnitPlatform()
+    }
 }
