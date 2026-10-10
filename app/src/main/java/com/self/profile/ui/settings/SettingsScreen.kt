@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -60,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -155,86 +159,108 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        Column(
+        // 整页压成单层 LazyColumn。原先这里是 Column + verticalScroll：滚动容器会给子节点
+        // 无限高约束，提醒列表再套 LazyColumn 会直接崩（infinity maximum height constraints），
+        // 不滚动又无法只组化可见项，所以各 section 一律摊平成 LazyListScope 的 item。
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(rememberScrollState())
+                .background(MaterialTheme.colorScheme.background),
+            // 等价于原先滚动列末尾的 Spacer(80.dp)，给 FAB 让位
+            contentPadding = PaddingValues(bottom = 80.dp)
         ) {
             // 顶部 Header（统一页面头部；本页上半为提醒中心）
-            PageHeader(
-                title = "设置",
-                subtitle = "提醒中心 · 数据 · 偏好"
-            )
+            item {
+                PageHeader(
+                    title = "设置",
+                    subtitle = "提醒中心 · 数据 · 偏好"
+                )
+            }
 
             // 通知权限引导（Android 13+ 未授权时）
             if (!notifPermissionGranted) {
-                Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    SectionCard(title = null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Filled.Notifications,
-                                contentDescription = null,
-                                tint = WarmJournalColors.Warning,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "通知权限未开启",
-                                    style = MaterialTheme.typography.bodyMedium
+                item {
+                    Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                        SectionCard(title = null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    Icons.Filled.Notifications,
+                                    contentDescription = null,
+                                    tint = WarmJournalColors.Warning,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                Text(
-                                    "开启后提醒才能在通知栏弹出",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Spacer(Modifier.width(8.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "通知权限未开启",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        "开启后提醒才能在通知栏弹出",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                TextButton(onClick = {
+                                    notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }) { Text("去开启") }
                             }
-                            TextButton(onClick = {
-                                notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }) { Text("去开启") }
                         }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                item { Spacer(Modifier.height(8.dp)) }
             }
 
             // 统计概览
-            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                SectionCard(title = null) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        StatCell("已设置", state.total)
-                        StatCell("已开启", state.enabledCount)
-                        StatCell("7 天内", state.upcomingCount)
+            item {
+                Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    SectionCard(title = null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            StatCell("已设置", state.total)
+                            StatCell("已开启", state.enabledCount)
+                            StatCell("7 天内", state.upcomingCount)
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            item { Spacer(Modifier.height(8.dp)) }
 
-            // 即将到来
+            // 即将到来：被 take(5) 硬性截断，长度有界，仍作单个 item 组合
             if (state.upcoming.isNotEmpty()) {
-                Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    SectionCard(title = "即将到来") {
-                        Column {
-                            state.upcoming.take(5).forEach { item ->
-                                UpcomingRow(item, state.today)
+                item {
+                    Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                        SectionCard(title = "即将到来") {
+                            Column {
+                                state.upcoming.take(5).forEach { item ->
+                                    UpcomingRow(item, state.today)
+                                }
                             }
                         }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
+                item { Spacer(Modifier.height(8.dp)) }
             }
 
-            // 5 Tab 过滤
-            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                SectionCard(title = "全部提醒") {
+            // 「全部提醒」卡片：本页唯一会随数据量无限增长的一段，拆成 item 列表。
+            // 卡片拆开后由 CardSegment 让每段各自延续同一块 surface 背景，
+            // 首段给上内边距、末段给下内边距，拼起来与原 SectionCard 视觉一致。
+            item(key = "all_reminders_header") {
+                CardSegment(topPadding = 20.dp) {
+                    Text(
+                        text = "全部提醒",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                    )
                     SecondaryTabRow(
                         selectedTabIndex = state.currentTab.ordinal,
                         containerColor = Color.Transparent
@@ -252,7 +278,11 @@ fun SettingsScreen(
                             )
                         }
                     }
-                    if (state.filtered.isEmpty()) {
+                }
+            }
+            if (state.filtered.isEmpty()) {
+                item(key = "all_reminders_empty") {
+                    CardSegment(bottomPadding = 20.dp) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -270,103 +300,115 @@ fun SettingsScreen(
                                 description = "点击右下角 + 添加"
                             )
                         }
-                    } else {
-                        Column {
-                            state.filtered.forEach { item ->
-                                AllReminderRow(
-                                    item = item,
-                                    today = state.today,
-                                    onClick = { editing = item.reminder },
-                                    onToggle = { enabled ->
-                                        viewModel.toggleEnabled(item.reminder.id, enabled)
-                                    },
-                                    onDelete = { pendingDelete = item.reminder }
-                                )
-                                if (item != state.filtered.last()) {
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                }
-                            }
+                    }
+                }
+            } else {
+                // key 用提醒业务主键 reminder.id，不用 index：开关 / 删除会让列表重排，
+                // 按 index 复用会让状态挂到别的行上
+                itemsIndexed(
+                    items = state.filtered,
+                    key = { _, item -> "all_reminder_${item.reminder.id}" }
+                ) { index, item ->
+                    CardSegment(
+                        bottomPadding = if (index == state.filtered.lastIndex) 20.dp else 0.dp
+                    ) {
+                        AllReminderRow(
+                            item = item,
+                            today = state.today,
+                            onClick = { editing = item.reminder },
+                            onToggle = { enabled ->
+                                viewModel.toggleEnabled(item.reminder.id, enabled)
+                            },
+                            onDelete = { pendingDelete = item.reminder }
+                        )
+                        if (index < state.filtered.lastIndex) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         }
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            item { Spacer(Modifier.height(8.dp)) }
 
-            // 快捷设置
-            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                SectionCard(title = "快捷设置") {
-                    Column {
-                        SettingRow("默认提前天数", "${state.settings.defaultAdvanceDays} 天")
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow("每日提醒时间", state.settings.defaultReminderTime)
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        ToggleRow(
-                            label = "农历生日显示",
-                            checked = state.settings.showLunarBirthday,
-                            onToggle = { viewModel.setShowLunarBirthday(it) }
-                        )
+            // 快捷设置（固定 3 行，item 数不随数据增长）
+            item {
+                Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    SectionCard(title = "快捷设置") {
+                        Column {
+                            SettingRow("默认提前天数", "${state.settings.defaultAdvanceDays} 天")
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            SettingRow("每日提醒时间", state.settings.defaultReminderTime)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            ToggleRow(
+                                label = "农历生日显示",
+                                checked = state.settings.showLunarBirthday,
+                                onToggle = { viewModel.setShowLunarBirthday(it) }
+                            )
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            item { Spacer(Modifier.height(8.dp)) }
 
-            // 应用设置
-            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                SectionCard(title = "应用设置") {
-                    Column {
-                        SettingRow(
-                            label = "深色模式",
-                            value = darkModeLabel(state.settings.darkMode),
-                            onClick = { showDarkModePicker = true }
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(
-                            label = "字体大小",
-                            value = fontScaleLabel(state.settings.fontScale),
-                            onClick = { showFontScalePicker = true }
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(
-                            label = "数据管理",
-                            value = when {
-                                clearState is ClearState.Running -> "清除中…"
-                                exportState is ExportState.Running -> "导出中…"
-                                importState is ImportState.Running -> "导入中…"
-                                else -> "备份/导入"
-                            },
-                            onClick = { showDataManageSheet = true }
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow(
-                            label = "回收站",
-                            value = "已删除的人物与提醒",
-                            onClick = {
-                                showDataManageSheet = false
-                                onNavigateToRecycleBin()
-                            }
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        ToggleRow(
-                            label = "应用锁",
-                            checked = state.settings.appLockEnabled,
-                            onToggle = { viewModel.setAppLockEnabled(it) }
-                        )
+            // 应用设置（固定 5 行）
+            item {
+                Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    SectionCard(title = "应用设置") {
+                        Column {
+                            SettingRow(
+                                label = "深色模式",
+                                value = darkModeLabel(state.settings.darkMode),
+                                onClick = { showDarkModePicker = true }
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            SettingRow(
+                                label = "字体大小",
+                                value = fontScaleLabel(state.settings.fontScale),
+                                onClick = { showFontScalePicker = true }
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            SettingRow(
+                                label = "数据管理",
+                                value = when {
+                                    clearState is ClearState.Running -> "清除中…"
+                                    exportState is ExportState.Running -> "导出中…"
+                                    importState is ImportState.Running -> "导入中…"
+                                    else -> "备份/导入"
+                                },
+                                onClick = { showDataManageSheet = true }
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            SettingRow(
+                                label = "回收站",
+                                value = "已删除的人物与提醒",
+                                onClick = {
+                                    showDataManageSheet = false
+                                    onNavigateToRecycleBin()
+                                }
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            ToggleRow(
+                                label = "应用锁",
+                                checked = state.settings.appLockEnabled,
+                                onToggle = { viewModel.setAppLockEnabled(it) }
+                            )
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            item { Spacer(Modifier.height(8.dp)) }
 
-            // 关于
-            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                SectionCard(title = "关于") {
-                    Column {
-                        SettingRow("应用名称", "自我档案与人物图鉴")
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        SettingRow("版本号", "v${BuildConfig.VERSION_NAME}")
+            // 关于（固定 2 行）
+            item {
+                Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    SectionCard(title = "关于") {
+                        Column {
+                            SettingRow("应用名称", "自我档案与人物图鉴")
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            SettingRow("版本号", "v${BuildConfig.VERSION_NAME}")
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(80.dp)) // FAB 占位
         }
     }
 
@@ -683,6 +725,31 @@ private fun fontScaleLabel(pref: FontSizePref): String = when (pref) {
     FontSizePref.STANDARD -> "标准"
     FontSizePref.LARGE -> "大号"
     FontSizePref.XLARGE -> "特大"
+}
+
+/**
+ * 「全部提醒」卡片被 LazyColumn 拆成多段后，每一段延续同一块卡片背景。
+ *
+ * 与 [SectionCard] 视觉等价（那张卡片同样只有 surface 背景 + 20dp 内边距，无边框无圆角），
+ * 区别只在于纵向内边距由各段自己给：首段补 20dp、末段补 20dp、中间段不给，
+ * 这样多段拼起来既看不出接缝，也不必把长列表塞回一个 item 里。
+ */
+@Composable
+private fun CardSegment(
+    topPadding: Dp = 0.dp,
+    bottomPadding: Dp = 0.dp,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 20.dp)
+            .padding(top = topPadding, bottom = bottomPadding)
+    ) {
+        content()
+    }
 }
 
 @Composable

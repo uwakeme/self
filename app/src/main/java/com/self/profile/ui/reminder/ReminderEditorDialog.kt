@@ -27,7 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,34 +78,51 @@ fun ReminderEditorDialog(
         isLunar: Boolean
     ) -> Unit
 ) {
-    var personId by remember { mutableStateOf(existing?.personId) }
-    var type by remember { mutableStateOf(existing?.type ?: ReminderType.CUSTOM) }
-    var title by remember { mutableStateOf(existing?.title ?: "") }
-    var date by remember { mutableStateOf(
-        existing?.date?.let { LocalDate.ofEpochDay(it) } ?: LocalDate.now().plusDays(7)
-    ) }
-    var isLunar by remember {
+    // 表单状态一律 rememberSaveable：旋转屏幕 / 进程被回收后重建时，用户已经填好的
+    // 标题、日期、备注不能丢（与 PeopleGalleryScreen / SelfDetailScreen 的写法统一）。
+    //
+    // Bundle 只能直接承载基本类型与 Serializable，这里逐个对齐：
+    // - LocalDate 虽实现 Serializable，但存进 Bundle 要走 Java 序列化
+    //   （writeReplace + SerializedLambda），既慢又脆；改存 epochDay(Long)，
+    //   与 Reminder.date 的存法一致，读写都在下面的 date 派生属性上收口。
+    // - ReminderType / RepeatRule 是 Kotlin 枚举，继承 java.lang.Enum（实现 Serializable），可以直接存。
+    // - 其余都是 String / Int / Boolean。
+    var personId by rememberSaveable { mutableStateOf(existing?.personId) }
+    var type by rememberSaveable { mutableStateOf(existing?.type ?: ReminderType.CUSTOM) }
+    var title by rememberSaveable { mutableStateOf(existing?.title ?: "") }
+    var dateEpochDay by rememberSaveable {
+        mutableStateOf(
+            existing?.date ?: LocalDate.now().plusDays(7).toEpochDay()
+        )
+    }
+    var isLunar by rememberSaveable {
         mutableStateOf(existing?.isLunar ?: false)
     }
-    var lunarMonth by remember {
+    var lunarMonth by rememberSaveable {
         mutableStateOf(
             existing?.date?.let { LunarHelper.solarToLunarMonthDay(LocalDate.ofEpochDay(it)).first } ?: 1
         )
     }
-    var lunarDay by remember {
+    var lunarDay by rememberSaveable {
         mutableStateOf(
             existing?.date?.let { LunarHelper.solarToLunarMonthDay(LocalDate.ofEpochDay(it)).second } ?: 1
         )
     }
-    var advanceDays by remember { mutableStateOf(existing?.advanceDays ?: 3) }
-    var reminderTime by remember { mutableStateOf(existing?.reminderTime ?: "08:00") }
-    var repeat by remember { mutableStateOf(existing?.repeat ?: RepeatRule.YEARLY) }
-    var notes by remember { mutableStateOf(existing?.notes ?: "") }
+    var advanceDays by rememberSaveable { mutableStateOf(existing?.advanceDays ?: 3) }
+    var reminderTime by rememberSaveable { mutableStateOf(existing?.reminderTime ?: "08:00") }
+    var repeat by rememberSaveable { mutableStateOf(existing?.repeat ?: RepeatRule.YEARLY) }
+    var notes by rememberSaveable { mutableStateOf(existing?.notes ?: "") }
 
-    var showDatePicker by remember { mutableStateOf(false) }
-    var showLunarMonthPicker by remember { mutableStateOf(false) }
-    var showLunarDayPicker by remember { mutableStateOf(false) }
-    var showAdvanced by remember { mutableStateOf(false) }
+    // 派生值：表单各处统一读 date，改值时写 dateEpochDay。
+    // 在组合期读 dateEpochDay 这份 MutableState 本身就是订阅点，date 变化能正常触发重组
+    val date: LocalDate = LocalDate.ofEpochDay(dateEpochDay)
+
+    // 展开态同样要跨旋转保留：否则选日期的浮层 / 高级设置弹窗一转屏就凭空消失，
+    // 用户在里面已经选好的值也跟着一起丢
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showLunarMonthPicker by rememberSaveable { mutableStateOf(false) }
+    var showLunarDayPicker by rememberSaveable { mutableStateOf(false) }
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
 
     val dateFormatter = DateFormats.FULL
     val canSave = title.isNotBlank()
@@ -114,7 +131,7 @@ fun ReminderEditorDialog(
         DatePickerSheet(
             initialDate = date,
             onConfirm = { d ->
-                date = d
+                dateEpochDay = d.toEpochDay()
                 // 从公历切农历时，以所选公历日的农历月日为起点
                 val (m, d2) = LunarHelper.solarToLunarMonthDay(d)
                 lunarMonth = m

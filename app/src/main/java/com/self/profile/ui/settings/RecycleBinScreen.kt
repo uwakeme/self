@@ -1,5 +1,6 @@
 package com.self.profile.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteForever
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -105,43 +107,50 @@ fun RecycleBinScreen(
                     .padding(horizontal = 16.dp)
             ) {
                 if (state.people.isNotEmpty()) {
-                    item {
+                    item(key = "people_label") {
                         SectionLabel("人物（${state.people.size}）")
                     }
-                    item {
-                        SectionCard(title = null) {
-                            Column {
-                                state.people.forEachIndexed { index, person ->
-                                    DeletedPersonRow(
-                                        person = person,
-                                        onRestore = { viewModel.restorePerson(person) },
-                                        onPurge = { pendingPurgePerson = person }
-                                    )
-                                    if (index < state.people.lastIndex) {
-                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                    }
-                                }
+                    // 每一行各自成 item，只组化可见的那些。
+                    // key 用人物 id；加 "person_" 前缀是为了和下面的 reminder_ 命名空间隔开，
+                    // 同一个 LazyColumn 里的 key 必须全局唯一，撞了会直接抛异常
+                    itemsIndexed(
+                        items = state.people,
+                        key = { _, person -> "person_${person.id}" }
+                    ) { index, person ->
+                        BinCardSegment(
+                            topPadding = if (index == 0) 20.dp else 0.dp,
+                            bottomPadding = if (index == state.people.lastIndex) 20.dp else 0.dp
+                        ) {
+                            DeletedPersonRow(
+                                person = person,
+                                onRestore = { viewModel.restorePerson(person) },
+                                onPurge = { pendingPurgePerson = person }
+                            )
+                            if (index < state.people.lastIndex) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             }
                         }
                     }
                 }
                 if (state.reminders.isNotEmpty()) {
-                    item {
+                    item(key = "reminders_label") {
                         SectionLabel("提醒（${state.reminders.size}）")
                     }
-                    item {
-                        SectionCard(title = null) {
-                            Column {
-                                state.reminders.forEachIndexed { index, reminder ->
-                                    DeletedReminderRow(
-                                        reminder = reminder,
-                                        onRestore = { viewModel.restoreReminder(reminder) },
-                                        onPurge = { pendingPurgeReminder = reminder }
-                                    )
-                                    if (index < state.reminders.lastIndex) {
-                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                    }
-                                }
+                    itemsIndexed(
+                        items = state.reminders,
+                        key = { _, reminder -> "reminder_${reminder.id}" }
+                    ) { index, reminder ->
+                        BinCardSegment(
+                            topPadding = if (index == 0) 20.dp else 0.dp,
+                            bottomPadding = if (index == state.reminders.lastIndex) 20.dp else 0.dp
+                        ) {
+                            DeletedReminderRow(
+                                reminder = reminder,
+                                onRestore = { viewModel.restoreReminder(reminder) },
+                                onPurge = { pendingPurgeReminder = reminder }
+                            )
+                            if (index < state.reminders.lastIndex) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             }
                         }
                     }
@@ -233,6 +242,30 @@ fun RecycleBinScreen(
                 TextButton(onClick = { showEmptyConfirm = false }) { Text("取消") }
             }
         )
+    }
+}
+
+/**
+ * 回收站卡片被 LazyColumn 拆成多段后，每一段延续同一块卡片背景。
+ *
+ * 与 [SectionCard] 视觉等价（同样只有 surface 背景 + 20dp 内边距，无边框无圆角），
+ * 只是纵向内边距交给各段自己给，避免段与段之间露出缝隙。
+ * 横向不用再补边距：外层 LazyColumn 已经整体留了 16.dp。
+ */
+@Composable
+private fun BinCardSegment(
+    topPadding: Dp = 0.dp,
+    bottomPadding: Dp = 0.dp,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 20.dp)
+            .padding(top = topPadding, bottom = bottomPadding)
+    ) {
+        content()
     }
 }
 
