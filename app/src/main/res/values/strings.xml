@@ -21,12 +21,12 @@
     <string name="self_loading">加载中…</string>
     <string name="self_empty_title">还没有我的档案</string>
     <string name="self_empty_description">自我档案不存在，或已被「清除全部数据」一并清空</string>
-    <!-- 空态引导拆成两条：_restart 与 _import 并列显示。
-         _restart 仅在「清库后仍会自动重新播种」的当前行为下成立；
-         Task 5 禁止重新播种后，直接删掉 self_empty_action_hint_restart 这一条即可，
-         并在 SelfDetailScreen.SelfEmptyState() 里去掉对应的 stringResource 引用。 -->
-    <string name="self_empty_action_hint_restart">重启应用可重新生成一份初始档案</string>
+    <!-- 空态主出路是「建立我的档案」按钮，导入备份降级为次要提示。
+         原本并列的 self_empty_action_hint_restart（重启重建）已随「种子不再复活」删除。 -->
+    <string name="self_empty_create_action">建立我的档案</string>
     <string name="self_empty_action_hint_import">如需恢复此前导出的备份，可前往「设置 → 数据管理」导入</string>
+    <!-- 建档时设置页昵称为空白时的姓名兜底 -->
+    <string name="self_default_name">我</string>
 
     <!-- 提醒通知 -->
     <string name="notif_channel_reminder_id">reminder_channel</string>

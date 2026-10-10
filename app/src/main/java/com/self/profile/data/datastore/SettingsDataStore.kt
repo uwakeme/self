@@ -15,6 +15,7 @@ import com.self.profile.domain.model.FontSizePref
 import com.self.profile.domain.model.GallerySortRule
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -80,6 +81,16 @@ class SettingsDataStore @Inject constructor(
     }
 
     /**
+     * 「用户已经初始化过数据」开关（见 [com.self.profile.data.seed.SeedData]）。
+     *
+     * 不放进 [AppSettings]：它是种子判据而非用户可见设置，既不该被导出/恢复，
+     * 也不该出现在设置页。首次播种成功后置 true，此后清库不再重新播种。
+     */
+    suspend fun isUserInitialized(): Boolean = store.data.first()[Keys.USER_INITIALIZED] ?: false
+
+    suspend fun setUserInitialized(value: Boolean) = store.edit { it[Keys.USER_INITIALIZED] = value }
+
+    /**
      * 从备份恢复设置。应用锁开关/超时是设备侧安全状态、lastBackupTime 是导出动作的
      * 时间戳，均不随备份恢复，保持当前设备值。
      */
@@ -118,5 +129,6 @@ class SettingsDataStore @Inject constructor(
         val GALLERY_CUSTOM_ORDER = stringPreferencesKey("gallery_custom_order")
         val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled")
         val APP_LOCK_TIMEOUT = intPreferencesKey("app_lock_timeout")
+        val USER_INITIALIZED = booleanPreferencesKey("user_initialized")
     }
 }

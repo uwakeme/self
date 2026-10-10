@@ -2,6 +2,7 @@ package com.self.profile.ui.self
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.self.profile.R
 import com.self.profile.data.datastore.SettingsDataStore
 import com.self.profile.data.repository.PersonRepository
 import com.self.profile.data.repository.ReminderRepository
@@ -12,6 +13,7 @@ import com.self.profile.domain.model.LifeJourneyEntry
 import com.self.profile.domain.model.Note
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.Photo
+import com.self.profile.domain.model.RelationshipType
 import com.self.profile.domain.model.Reminder
 import com.self.profile.domain.model.ReminderType
 import com.self.profile.domain.model.RepeatRule
@@ -97,6 +99,49 @@ class SelfEditViewModel @Inject constructor(
      * 每次操作都在锁内重读 DB 最新值再 transform，避免旧快照整行覆盖丢掉前一次修改。
      */
     private val writeMutex = Mutex()
+
+    // ====== 自我档案创建 ======
+
+    /**
+     * 空态下创建一份空白自我档案。
+     *
+     * self 行原本只由种子数据或备份导入产生，全仓没有第二个入口。禁止重新播种之后，
+     * 用户执行过「清除全部数据」就只能靠导入备份找回档案，没导出过的用户无路可走，
+     * 所以补上这个入口。
+     */
+    fun createSelf() {
+        viewModelScope.launch { createSelfIfAbsent() }
+    }
+
+    /**
+     * [createSelf] 的逻辑本体，单独拆出便于单测（外层要走 viewModelScope，需要 Main dispatcher）。
+     *
+     * 写入走同一把 [writeMutex] 并在锁内重读库：空态按钮连点两次、或空态期间导入了备份，
+     * 都不会写出第二行 is_self = 1。
+     */
+    internal suspend fun createSelfIfAbsent() {
+        writeMutex.withLock {
+            if (personRepo.observeSelf().first() != null) return@withLock
+            val now = System.currentTimeMillis()
+            // 姓名沿用设置页里的昵称；昵称被清成空白时兜底成「我」，不要给档案留个空名字
+            val name = settingsStore.settings.first().userNickname
+                .ifBlank { appContext.getString(R.string.self_default_name) }
+            personRepo.upsert(
+                Person(
+                    id = UUID.randomUUID().toString(),
+                    name = name,
+                    avatarColor = "#C4785B",
+                    avatarInitial = name.take(1),
+                    relationshipType = RelationshipType.FRIEND,  // isSelf 时无所谓
+                    isSelf = true,
+                    createdAt = now,
+                    updatedAt = now
+                )
+            )
+            // 既然已经有数据了，把「已初始化」开关一并置上，seed 判据始终与库状态自洽
+            settingsStore.setUserInitialized(true)
+        }
+    }
 
     /**
      * 通用更新：锁内读库最新 self → transform → 持久化（自动更新 updatedAt）。

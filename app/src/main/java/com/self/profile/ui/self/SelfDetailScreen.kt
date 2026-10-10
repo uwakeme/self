@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -98,7 +99,7 @@ fun SelfDetailScreen(
         }
         // DB 里没有 is_self = 1 的行（例如刚执行完「清除全部数据」）时走这里。
         // 之前与 Loading 并到同一分支，用户会永久卡在「加载中…」。
-        SelfDetailUiState.Empty -> SelfEmptyState()
+        SelfDetailUiState.Empty -> SelfEmptyState(onCreate = viewModel::createSelf)
         is SelfDetailUiState.Loaded -> SelfContent(
             person = s.self,
             viewModel = viewModel,
@@ -108,13 +109,13 @@ fun SelfDetailScreen(
 }
 
 /**
- * 自我档案为空时的空态：说明现状 + 指引下一步。
+ * 自我档案为空时的空态：说明现状 + 给出能真正建档的入口。
  *
- * 当前应用没有「新建自我档案」的入口（self 行只由种子数据或备份导入产生），
- * 因此这里引导用户去设置页导入备份，而不是给一个点了没反应的按钮。
+ * 主出路是「建立我的档案」按钮（[SelfEditViewModel.createSelf]），导入备份降级为次要提示。
+ * 写入后 Room Flow 会自动推新行，这里不需要手动刷新 UI。
  */
 @Composable
-private fun SelfEmptyState() {
+private fun SelfEmptyState(onCreate: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -125,15 +126,13 @@ private fun SelfEmptyState() {
                 description = stringResource(R.string.self_empty_description),
                 icon = Icons.Outlined.Person
             )
-            // 两条出路分列：重启重建（Task 5 落地后失效，届时删掉这一条）
-            // 与导入备份。拆成两个 string key 便于 Task 5 单独摘除。
-            Text(
-                text = stringResource(R.string.self_empty_action_hint_restart),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-                textAlign = TextAlign.Center,
+            Button(
+                onClick = onCreate,
                 modifier = Modifier.padding(horizontal = 24.dp)
-            )
+            ) {
+                Text(stringResource(R.string.self_empty_create_action))
+            }
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.self_empty_action_hint_import),
                 style = MaterialTheme.typography.bodySmall,

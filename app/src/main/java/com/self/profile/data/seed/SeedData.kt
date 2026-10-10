@@ -28,8 +28,12 @@ import javax.inject.Singleton
 /**
  * 首次启动种子数据。
  *
- * 检测数据库为空时写入 1 个 self + 5 个其他人物 + 3 条提醒。
- * 后续用户可编辑、删除，不会重新触发。
+ * 判据是「库为空 **且** [SettingsDataStore] 的 user_initialized 开关为 false」，
+ * 两者都满足才写入 1 个 self + 5 个其他人物 + 3 条提醒。
+ *
+ * 单看「库为空」是不够的：用户在设置页执行「清除全部数据」后 persons 表被清空，
+ * 下一次冷启动就会把 5 个 demo 人物原样塞回来，用户以为清干净了却没清掉。
+ * 播种成功后开关置 true，此后清库不再重新播种。
  */
 @Singleton
 class SeedData @Inject constructor(
@@ -38,10 +42,17 @@ class SeedData @Inject constructor(
     private val settingsStore: SettingsDataStore
 ) {
     suspend fun seedIfEmpty() {
-        if (!personRepo.isEmpty()) return
+        if (settingsStore.isUserInitialized()) return
+        if (!personRepo.isEmpty()) {
+            // 升级安装：库里已经有数据，说明用户早就用过了。把开关补上，
+            // 否则开关会一直停在 false，等用户日后清库，种子反而会在下次冷启动复活
+            settingsStore.setUserInitialized(true)
+            return
+        }
         val now = System.currentTimeMillis()
         personRepo.upsertAll(buildSeedPersons(now))
         reminderRepo.upsertAll(buildSeedReminders(now))
+        settingsStore.setUserInitialized(true)
     }
 
     private fun buildSeedPersons(now: Long): List<Person> {
