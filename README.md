@@ -3,7 +3,7 @@
 一款面向个人用户的 Android 应用，用温暖手账风格记录自我与身边重要的人。纯本地存储、隐私优先。
 
 > **状态**：MVP + 发布增强已完成（阶段 0-7 全量 + POST_LAUNCH_ROADMAP Phase 1-3 + 数据安全/新功能一批）
-> **平台**：Android 8.0+ (minSdk 26 / targetSdk 34)
+> **平台**：Android 8.0+ (minSdk 26 / targetSdk 35)
 > **技术栈**：Kotlin + Jetpack Compose + Material 3 + Hilt + Room + DataStore + WorkManager
 
 ## 核心功能

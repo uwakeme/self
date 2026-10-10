@@ -31,7 +31,7 @@
         tools:ignore="ImageContrastCheck"
         android:supportsRtl="true"
         android:theme="@style/Theme.SelfProfile"
-        tools:targetApi="34">
+        tools:targetApi="35">
 
         <activity
             android:name=".MainActivity"

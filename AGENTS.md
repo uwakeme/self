@@ -1,6 +1,6 @@
 # AGENTS.md
 
-「自我档案与人物图鉴」——个人 Android 手账 App，Kotlin + Jetpack Compose + Material 3 + Hilt + Room + DataStore。AGP 8.6.1 / Kotlin 2.0.20 / Gradle 8.7 / JDK 17，minSdk 26 / targetSdk 34，applicationId `com.self.profile`。
+「自我档案与人物图鉴」——个人 Android 手账 App，Kotlin + Jetpack Compose + Material 3 + Hilt + Room + DataStore。AGP 8.6.1 / Kotlin 2.0.21 / Gradle 8.7 / JDK 17，minSdk 26 / targetSdk 35，applicationId `com.self.profile`。
 
 完整需求 `docs/PRD.md` · 阶段计划 `docs/PLAN.md` · MVP 后路线图 `docs/POST_LAUNCH_ROADMAP.md`（已完成）· 用户文档 `README.md`。
 
@@ -61,7 +61,7 @@
 
 - 主分支 `main`（remote HEAD，仓库只有这一个分支）；个人项目轻流程
 - Commit 偏好 conventional commits 风格（`feat:` `fix:` `refactor:` `docs:` `style:` `test:` `chore:`），不强求
-- 推送前本地跑一次 `.\gradlew.bat :app:assembleDebug` + `:app:testDebugUnitTest` 确认编过测过；CI 暂未配
+- 推送前本地跑一次 `.\gradlew.bat :app:assembleDebug` + `:app:testDebugUnitTest` 确认编过测过；CI 已配（`.github/workflows/android.yml`，GitHub Actions 跑 assembleDebug + testDebugUnitTest + lintDebug）
 
 ## Security
 

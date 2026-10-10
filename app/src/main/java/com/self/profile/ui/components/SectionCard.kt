@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,8 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * 通用卡片容器（与 design/colors_and_type.css 的 .card 样式一致）：
- * - 白色背景 / 1px 边框 / 14dp 圆角 / 20dp 内边距
+ * 通用卡片容器：surface 纯色背景 + 20dp 内边距，**没有边框、没有圆角**。
+ *
+ * 「无边框无圆角」是刻意为之，不是漏实现：设置页的「全部提醒」卡片和回收站的
+ * 人物/提醒列表都被 LazyColumn 拆成了多个 item，靠 `SettingsScreen.kt` 的
+ * `CardSegment` / `RecycleBinScreen.kt` 的 `BinCardSegment` 各自延续同一块背景
+ * 拼回去（见两处注释）。只要这张卡是带圆角的，分段处就会露 N 道圆角接缝。
+ * 要改形状请连同那两处分段逻辑一起改。
  *
  * 可选 [title]：左上角标题 + 右侧 [action] slot
  */

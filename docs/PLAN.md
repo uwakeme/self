@@ -44,9 +44,9 @@
 |---|---|---|
 | AGP | 8.5+ | 兼容 Kotlin 2.0 |
 | Kotlin | 2.0+ | 启用 Compose Compiler Plugin |
-| compileSdk | 34 | Android 14 |
+| compileSdk | 35 | Android 15 |
 | minSdk | 26 | Android 8.0，覆盖 95%+ 设备，java.time 可用 |
-| targetSdk | 34 | 适配最新 |
+| targetSdk | 35 | 适配最新 |
 | Java | 17 | AGP 8.x 要求 |
 
 ### 1.3 第三方库版本（初步，后续以实际更新为准）

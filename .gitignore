@@ -37,3 +37,7 @@ google-services.json
 
 # 模拟器 UI 测试截图（临时产物）
 .testshots/
+
+# 工具 / 构建缓存目录（本地生成）
+.zcode/
+.kotlin/

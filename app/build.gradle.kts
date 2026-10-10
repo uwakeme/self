@@ -22,7 +22,6 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables { useSupportLibrary = true }
     }
 
     // Release 签名从环境变量读（勿提交 keystore）：
@@ -72,6 +71,16 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+
+    // lint 门禁（2026-10 接入 CI 时加）。
+    // 存量情况：lintDebug 当前 60 条（56 warning + 4 information / 0 error），
+    // 所以没有建 baseline —— 有了 baseline 只会把同 ID 的新问题一起吞掉。
+    // 有 error 就直接断构建，warning 先只报告。
+    lint {
+        abortOnError = true
+        warningsAsErrors = false
+        checkDependencies = true
     }
 }
 
