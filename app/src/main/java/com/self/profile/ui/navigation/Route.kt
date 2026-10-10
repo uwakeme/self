@@ -28,7 +28,17 @@ sealed class Route(val path: String) {
         fun build(personId: String) = "people/$personId"
     }
 
-    data object AddPerson : Route("people/add")
+    /**
+     * 添加人物页路由。**不能**放回 `people/` 命名空间。
+     *
+     * 历史原因：原路径为 `people/add`，而 [PersonDetail] 的 `people/{personId}` 在
+     * AppNav 里注册得更早。Navigation Compose 按**节点注册顺序**取第一个
+     * `matchRoute` 命中，没有「字面量优先于参数」规则，于是 `navigate("people/add")`
+     * 会命中详情路由、`personId="add"`，FAB 点开变成详情页并提示「人物不存在」。
+     * 改成 `people/new` 之类同样无效——仍是 `people/` 下的单段路径。
+     * 现改为顶级 `person-add`，与 `people/{personId}` 不再共享命名空间。
+     */
+    data object AddPerson : Route("person-add")
 
     data object RecycleBin : Route("settings/recycle-bin")
 

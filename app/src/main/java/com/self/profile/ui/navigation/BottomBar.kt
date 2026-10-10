@@ -47,13 +47,29 @@ val bottomTabs: List<TabSpec> = listOf(
     TabSpec(Route.Settings, R.string.tab_settings, Icons.Outlined.Settings, Icons.Filled.Settings)
 )
 
+/**
+ * 显示 BottomBar 的路由白名单：只有 5 个主 Tab 本身才显示。
+ *
+ * 用白名单而非黑名单（原来只挡 `people/` 前缀），否则新增子路由
+ * （全局搜索 `search`、回收站 `settings/recycle-bin` 等）会漏出底部 Tab。
+ */
+val BOTTOM_BAR_VISIBLE_ROUTES = setOf(
+    Route.Home.path,
+    Route.Self.path,
+    Route.People.path,
+    Route.Map.path,
+    Route.Settings.path
+)
+
 @Composable
 fun SelfBottomBar(navController: NavHostController) {
     val backStackEntry by navController.currentBackStackEntryAsState()
+    // destination.route 返回的是注册时的 pattern 而非用户实际导航到的具体路径，
+    // 所以 Route.Self 的 `self?scrollTo={scrollTo}` 可以直接进白名单
     val currentRoute = backStackEntry?.destination?.route
 
-    // 子页面（人物详情、添加人物）时不显示 BottomBar
-    if (currentRoute?.startsWith("people/") == true && currentRoute != Route.People.path) {
+    // 子页面（人物详情、添加人物、全局搜索、回收站）时不显示 BottomBar
+    if (currentRoute == null || currentRoute !in BOTTOM_BAR_VISIBLE_ROUTES) {
         return
     }
 
