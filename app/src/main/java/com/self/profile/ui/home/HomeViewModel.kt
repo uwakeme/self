@@ -20,6 +20,15 @@ import java.time.ZoneId
 import javax.inject.Inject
 
 /**
+ * [todayFlow] 单次等待的上限。
+ *
+ * delay 走的是单调时钟（设备深睡 / 手动改系统时间都不会让挂起的 delay 提前到期），
+ * 所以不能完全信任「睡到明天 0 点」。封顶后最长半小时一定会重新读一次 [LocalDate.now]，
+ * 用户手动把系统时间调到次日时倒计时也能跟上。
+ */
+private const val TODAY_FLOW_MAX_DELAY_MS = 30 * 60 * 1000L
+
+/**
  * 首页 ViewModel。汇总问候语所需的数据：
  * - 自身（昵称、头像）
  * - 即将到来提醒（前 3 条）
@@ -35,6 +44,10 @@ class HomeViewModel @Inject constructor(
     /**
      * 每天 0 点发射一次新日期。app 跨午夜存活时"30 天内 / 本月"窗口
      * 不能继续用 VM 构造时缓存的旧日期。
+     *
+     * 该日期必须进 [HomeUiState]（见 `today` 字段）：否则跨零点时重算出来的
+     * state 与旧 state 结构相等，StateFlow 会直接 conflate 掉，组合层拿不到新值，
+     * 倒计时就停在昨天。
      */
     private val todayFlow = flow {
         while (true) {
@@ -44,7 +57,10 @@ class HomeViewModel @Inject constructor(
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
-            delay((nextMidnight - System.currentTimeMillis()).coerceAtLeast(1_000L))
+            delay(
+                (nextMidnight - System.currentTimeMillis())
+                    .coerceIn(1_000L, TODAY_FLOW_MAX_DELAY_MS)
+            )
         }
     }
 
@@ -88,6 +104,7 @@ class HomeViewModel @Inject constructor(
                 classmate = others.count { it.relationshipType.label == "同学" }
             ),
             showAllCount = others.size,
+            today = today,
             monthEvents = monthEvents
         )
     }.stateIn(
@@ -106,6 +123,13 @@ data class HomeUiState(
     val others: List<Person>,
     val relationshipCounts: RelationshipCounts,
     val showAllCount: Int,
+    /**
+     * 当前「今天」，由 [HomeViewModel.todayFlow] 跨零点刷新。
+     *
+     * 必须留在 state 里：行组件的倒计时靠它取"今天"，而不是在组合期自己读系统时间
+     * （组合期读到的值不会因为跨零点而变化，且数据没变时 state 结构相等 → 不重组）。
+     */
+    val today: LocalDate,
     val monthEvents: List<MonthEvent> = emptyList()
 ) {
     companion object {
@@ -118,6 +142,7 @@ data class HomeUiState(
             others = emptyList(),
             relationshipCounts = RelationshipCounts(0, 0, 0, 0),
             showAllCount = 0,
+            today = LocalDate.now(),
             monthEvents = emptyList()
         )
     }

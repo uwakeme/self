@@ -143,7 +143,8 @@ fun HomeScreen(
                         ReminderItem(
                             reminder = reminder,
                             personInitial = person?.avatarInitial,
-                            personColor = person?.avatarColor
+                            personColor = person?.avatarColor,
+                            today = state.today
                         )
                     }
                 }

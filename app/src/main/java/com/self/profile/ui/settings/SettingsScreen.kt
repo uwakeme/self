@@ -224,7 +224,7 @@ fun SettingsScreen(
                     SectionCard(title = "即将到来") {
                         Column {
                             state.upcoming.take(5).forEach { item ->
-                                UpcomingRow(item)
+                                UpcomingRow(item, state.today)
                             }
                         }
                     }
@@ -275,6 +275,7 @@ fun SettingsScreen(
                             state.filtered.forEach { item ->
                                 AllReminderRow(
                                     item = item,
+                                    today = state.today,
                                     onClick = { editing = item.reminder },
                                     onToggle = { enabled ->
                                         viewModel.toggleEnabled(item.reminder.id, enabled)
@@ -693,9 +694,13 @@ private fun StatCell(label: String, value: Int) {
     }
 }
 
+/**
+ * 即将到来行。倒计时基准的「今天」由 [SettingsUiState.today] 透传，
+ * 不能在组合期自己读系统时间（跨零点不会触发重组）。
+ */
 @Composable
-private fun UpcomingRow(item: UpcomingReminder) {
-    val days = item.nextDate.toEpochDay() - LocalDate.now().toEpochDay()
+private fun UpcomingRow(item: UpcomingReminder, today: LocalDate) {
+    val days = item.nextDate.toEpochDay() - today.toEpochDay()
     val countdown = when {
         days == 0L -> "今天"
         days > 0 -> "还有${days}天"
@@ -727,14 +732,16 @@ private fun formatDateText(reminder: Reminder, nextDate: LocalDate): String =
         nextDate.format(DateFormats.SHORT)
     }
 
+/** 全部提醒行。倒计时基准的「今天」由 [SettingsUiState.today] 透传，不能在组合期读系统时间。 */
 @Composable
 private fun AllReminderRow(
     item: AllReminder,
+    today: LocalDate,
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit
 ) {
-    val days = item.nextDate.toEpochDay() - LocalDate.now().toEpochDay()
+    val days = item.nextDate.toEpochDay() - today.toEpochDay()
     val countdown = when {
         days == 0L -> "今天"
         days > 0 -> "还有${days}天"

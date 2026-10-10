@@ -39,12 +39,17 @@ import java.time.LocalDate
  * - 左侧 40dp 头像（首字+背景色）
  * - 中间：标题 + 副标题（日期 + 倒计时）
  * - 右侧 28dp 类型图标
+ *
+ * @param today 倒计时基准的「今天」，由 ViewModel 的跨零点流刷新后透传进来。
+ *   组件**不要**在组合期自己调 `LocalDate.now()`：数据没变化时 state 结构相等，
+ *   StateFlow 会 conflate 掉新值，不重组 → 倒计时停在昨天。
  */
 @Composable
 fun ReminderItem(
     reminder: Reminder,
     personInitial: String?,
     personColor: String?,
+    today: LocalDate,
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -66,7 +71,7 @@ fun ReminderItem(
     } else {
         nextDate.format(DateFormats.SHORT)
     }
-    val daysToGo = nextDate.toEpochDay() - LocalDate.now().toEpochDay()
+    val daysToGo = nextDate.toEpochDay() - today.toEpochDay()
     val countdownText = when {
         daysToGo == 0L -> "今天"
         daysToGo > 0 -> "还有${daysToGo}天"

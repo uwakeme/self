@@ -24,17 +24,28 @@ import android.content.Context
 import android.net.Uri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
+
+/**
+ * 每天 0 点发射一次新日期。
+ *
+ * 单次 delay 封顶 [TODAY_FLOW_MAX_DELAY_MS]：delay 走单调时钟（深睡 / 手动改系统时间
+ * 都不会让挂起的 delay 提前到期），封顶后最长半小时一定重读一次 [LocalDate.now]。
+ */
+private const val TODAY_FLOW_MAX_DELAY_MS = 30 * 60 * 1000L
 
 /**
  * 人物详情 ViewModel。
@@ -54,12 +65,32 @@ class PersonDetailViewModel @Inject constructor(
 
     private val personId: String = savedState.get<String>(Route.PersonDetail.ARG_PERSON_ID).orEmpty()
 
+    /**
+     * 跨零点刷新的「今天」。必须进 [PersonDetailUiState.Loaded]，否则跨零点时重算出的
+     * state 与旧 state 结构相等、StateFlow 直接 conflate 掉，相关提醒的倒计时会停在昨天。
+     */
+    private val todayFlow = flow {
+        while (true) {
+            val today = LocalDate.now()
+            emit(today)
+            val nextMidnight = today.plusDays(1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+            delay(
+                (nextMidnight - System.currentTimeMillis())
+                    .coerceIn(1_000L, TODAY_FLOW_MAX_DELAY_MS)
+            )
+        }
+    }
+
     val state: StateFlow<PersonDetailUiState> = combine(
         personRepo.observeById(personId),
-        reminderRepo.observeByPerson(personId)
-    ) { person, reminders ->
+        reminderRepo.observeByPerson(personId),
+        todayFlow
+    ) { person, reminders, today ->
         if (person == null) PersonDetailUiState.NotFound
-        else PersonDetailUiState.Loaded(person, reminders)
+        else PersonDetailUiState.Loaded(person, reminders, today)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -401,5 +432,14 @@ class PersonDetailViewModel @Inject constructor(
 sealed interface PersonDetailUiState {
     data object Loading : PersonDetailUiState
     data object NotFound : PersonDetailUiState
-    data class Loaded(val person: Person, val reminders: List<Reminder>) : PersonDetailUiState
+
+    /**
+     * @param today 倒计时基准的「今天」，由 VM 的跨零点流刷新后透传给行组件。
+     *   行组件不在组合期自己调 `LocalDate.now()`，否则跨零点不重组、倒计时停在昨天。
+     */
+    data class Loaded(
+        val person: Person,
+        val reminders: List<Reminder>,
+        val today: LocalDate
+    ) : PersonDetailUiState
 }

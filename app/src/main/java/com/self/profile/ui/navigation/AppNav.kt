@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -83,7 +84,29 @@ fun AppNav(
         ) {
             composable(Route.Home.path) {
                 HomeScreen(
-                    onNavigateToSelf = { scrollTo -> navController.navigate(Route.Self.build(scrollTo)) },
+                    onNavigateToSelf = { scrollTo ->
+                        navController.navigate(Route.Self.build(scrollTo)) {
+                            // 与 BottomBar.kt 标准写法的差异：不带 saveState / restoreState。
+                            //
+                            // restoreState 不能要：Navigation 2.8.3 的 restoreStateInternal
+                            // 是拿 backStackStates 里**旧的** NavBackStackEntryState 重建 entry，
+                            // 那份 entry 带的是上一次访问时的 scrollTo，本次跳转的 scrollTo
+                            // 会被丢弃（"写笔记"跳过去却停在原 section）。
+                            // saveState 同样不能要：它会把本次弹掉的 Self 记到 backStackMap
+                            // 里，随后 BottomBar 的 restoreState 会把它捞回来，等于把上面的坑
+                            // 从另一条路径重新引入。
+                            //
+                            // launchSingleTop 本身不丢参数：2.8.3 的 launchSingleTopInternal
+                            // 会用新参数重建 entry（沿用旧 entry 的 SavedStateHandle），随后
+                            // NavigatorState.onLaunchSingleTop 替换栈顶 entry 并重新 emit，
+                            // 所以带 scrollTo 的跳转依旧生效。
+                            //
+                            // popUpTo 起点（不 saveState）保证 Home 之上最多只有一个 Self
+                            // entry，连点多次「写笔记」后返回键一次即退出。
+                            popUpTo(navController.graph.findStartDestination().id)
+                            launchSingleTop = true
+                        }
+                    },
                     onNavigateToPeople = { navController.navigate(Route.People.path) },
                     onNavigateToMap = { navController.navigate(Route.Map.path) },
                     onNavigateToSettings = { navController.navigate(Route.Settings.path) },

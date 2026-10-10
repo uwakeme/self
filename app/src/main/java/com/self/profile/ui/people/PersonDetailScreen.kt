@@ -103,6 +103,7 @@ fun PersonDetailScreen(
         is PersonDetailUiState.Loaded -> PersonContent(
             person = s.person,
             reminders = s.reminders,
+            today = s.today,
             vm = viewModel,
             onBack = onBack
         )
@@ -113,6 +114,7 @@ fun PersonDetailScreen(
 private fun PersonContent(
     person: Person,
     reminders: List<Reminder>,
+    today: LocalDate,
     vm: PersonDetailViewModel,
     onBack: () -> Unit
 ) {
@@ -357,6 +359,7 @@ private fun PersonContent(
                     SectionWrap("相关提醒", action = { showReminderEditor = true }) {
                         RemindersSection(
                             reminders = reminders,
+                            today = today,
                             onEdit = { editingReminder = it },
                             onToggle = { id, enabled -> vm.toggleReminder(id, enabled) },
                             onDelete = { pendingDeleteReminder = it }
@@ -576,10 +579,14 @@ private fun AddAnniversaryTrigger(vm: PersonDetailViewModel) {
 /**
  * 相关提醒：展示该人物关联的提醒，可编辑 / 开关 / 删除（Phase 2 补完，
  * 此前 ViewModel 里 combine 了 reminders 但 UI 从未渲染）。
+ *
+ * @param today 倒计时基准的「今天」，由 VM 透传；不在组合期调 `LocalDate.now()`
+ *   ——组合期读到的值不会因跨零点变化，state 结构相等时也不会重组，倒计时会停在昨天。
  */
 @Composable
 private fun RemindersSection(
     reminders: List<Reminder>,
+    today: LocalDate,
     onEdit: (Reminder) -> Unit,
     onToggle: (String, Boolean) -> Unit,
     onDelete: (Reminder) -> Unit
@@ -591,7 +598,7 @@ private fun RemindersSection(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         reminders.forEach { r ->
             val nextDate = ReminderCalc.nextOccurrenceDate(r)
-            val days = nextDate.toEpochDay() - LocalDate.now().toEpochDay()
+            val days = nextDate.toEpochDay() - today.toEpochDay()
             val countdown = when {
                 days == 0L -> "今天"
                 days > 0 -> "还有${days}天"

@@ -42,6 +42,15 @@ import javax.inject.Inject
  * 提醒中心已合并到本屏：统计 + 即将到来 + Tab 过滤 + 全部列表 + 添加/编辑/删除 都在 [SettingsScreen] 里。
  * 原独立的 ReminderCenterScreen 已在 Phase 3.1 移除。
  */
+
+/**
+ * [SettingsViewModel.todayFlow] 单次等待的上限。
+ *
+ * delay 走的是单调时钟（深睡 / 手动改系统时间都不会让挂起的 delay 提前到期），
+ * 封顶后最长半小时一定会重新读一次 [LocalDate.now]。
+ */
+private const val TODAY_FLOW_MAX_DELAY_MS = 30 * 60 * 1000L
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val reminderRepo: ReminderRepository,
@@ -72,12 +81,15 @@ class SettingsViewModel @Inject constructor(
     private val todayFlow = flow {
         while (true) {
             val today = LocalDate.now()
-            emit(today.toEpochDay())
+            emit(today)
             val nextMidnight = today.plusDays(1)
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
-            delay((nextMidnight - System.currentTimeMillis()).coerceAtLeast(1_000L))
+            delay(
+                (nextMidnight - System.currentTimeMillis())
+                    .coerceIn(1_000L, TODAY_FLOW_MAX_DELAY_MS)
+            )
         }
     }
 
@@ -94,10 +106,11 @@ class SettingsViewModel @Inject constructor(
     ) { triple, allPeople, settings, tab, today ->
         val (reminders, total, enabledCount) = triple
         val personById = allPeople.associateBy { it.id }
+        val todayEpochDay = today.toEpochDay()
         // 倒计时用"下一次正日"：农历 / 跨年的重复提醒 reminder.date 可能已过期
         val upcoming = reminders.filter { it.enabled }
             .map { r -> r to ReminderCalc.nextOccurrenceDate(r) }
-            .filter { (_, d) -> d.toEpochDay() in today..(today + 7) }
+            .filter { (_, d) -> d.toEpochDay() in todayEpochDay..(todayEpochDay + 7) }
             .sortedBy { (_, d) -> d.toEpochDay() }
             .mapNotNull { (r, d) ->
                 personById[r.personId]?.let { p ->
@@ -132,7 +145,8 @@ class SettingsViewModel @Inject constructor(
             all = all,
             filtered = filtered,
             peopleById = personById,
-            currentTab = tab
+            currentTab = tab,
+            today = today
         )
     }.stateIn(
         scope = viewModelScope,
@@ -366,7 +380,14 @@ data class SettingsUiState(
     val all: List<AllReminder>,
     val filtered: List<AllReminder>,
     val peopleById: Map<String, Person>,
-    val currentTab: ReminderTab
+    val currentTab: ReminderTab,
+    /**
+     * 当前「今天」，由 [SettingsViewModel.todayFlow] 跨零点刷新。
+     *
+     * 必须留在 state 里：行组件的倒计时靠它取"今天"，而不是在组合期自己读系统时间
+     * （组合期读到的值不会因为跨零点而变化，且数据没变时 state 结构相等 → 不重组）。
+     */
+    val today: LocalDate
 ) {
     companion object {
         fun empty() = SettingsUiState(
@@ -376,7 +397,8 @@ data class SettingsUiState(
             all = emptyList(),
             filtered = emptyList(),
             peopleById = emptyMap(),
-            currentTab = ReminderTab.ALL
+            currentTab = ReminderTab.ALL,
+            today = LocalDate.now()
         )
     }
 }
