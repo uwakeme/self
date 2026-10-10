@@ -75,8 +75,13 @@ class DataExporterClearAllDataTest {
     }
 
     /**
-     * 「不触碰设置项」只约束用户偏好类设置，深色模式 / 应用锁 / 模块顺序等一个都不能动。
-     * 这条守着别让后来者以为「可以顺便清一下设置」而把 app 偏好一起重置掉。
+     * 「不触碰设置项」只约束用户偏好类设置，深色模式 / 应用锁 / 提醒默认值 / 模块顺序等
+     * 一个都不能动。这条守着别让后来者以为「可以顺便清一下设置」而把 app 偏好一起重置掉。
+     *
+     * 断言按 [SettingsDataStore] 里的**声明顺序**排列，覆盖全部 14 个 `set*` 中的 13 个
+     * （第 14 个 `setUserInitialized` 是本次修复刻意要调用的，单独由上面那条用例断言）。
+     * 外加 `restoreFrom` —— 它不是 setter，但同样能整包覆盖设置项，一并守住。
+     * 以后给 SettingsDataStore 加 setter 时，按这个顺序对照一眼就知道漏没漏。
      */
     @Test
     fun `清库不触碰用户偏好类设置`() = runBlocking {
@@ -84,12 +89,17 @@ class DataExporterClearAllDataTest {
 
         coVerify(exactly = 0) { settingsStore.setDarkMode(any()) }
         coVerify(exactly = 0) { settingsStore.setFontScale(any()) }
+        coVerify(exactly = 0) { settingsStore.setShowLunarBirthday(any()) }
         coVerify(exactly = 0) { settingsStore.setUserNickname(any()) }
+        coVerify(exactly = 0) { settingsStore.setLastBackupTime(any()) }
+        coVerify(exactly = 0) { settingsStore.setDefaultAdvanceDays(any()) }
+        coVerify(exactly = 0) { settingsStore.setDefaultReminderTime(any()) }
         coVerify(exactly = 0) { settingsStore.setAppLockEnabled(any()) }
         coVerify(exactly = 0) { settingsStore.setAppLockTimeout(any()) }
+        coVerify(exactly = 0) { settingsStore.setGallerySortRule(any()) }
+        coVerify(exactly = 0) { settingsStore.setGalleryCustomOrder(any()) }
         coVerify(exactly = 0) { settingsStore.setSelfProfileModuleOrder(any()) }
         coVerify(exactly = 0) { settingsStore.setPersonDetailModuleOrder(any()) }
-        coVerify(exactly = 0) { settingsStore.setGallerySortRule(any()) }
         coVerify(exactly = 0) { settingsStore.restoreFrom(any()) }
     }
 
