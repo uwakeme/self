@@ -125,8 +125,17 @@ private fun SelfEmptyState() {
                 description = stringResource(R.string.self_empty_description),
                 icon = Icons.Outlined.Person
             )
+            // 两条出路分列：重启重建（Task 5 落地后失效，届时删掉这一条）
+            // 与导入备份。拆成两个 string key 便于 Task 5 单独摘除。
             Text(
-                text = stringResource(R.string.self_empty_action_hint),
+                text = stringResource(R.string.self_empty_action_hint_restart),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+            Text(
+                text = stringResource(R.string.self_empty_action_hint_import),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
                 textAlign = TextAlign.Center,
