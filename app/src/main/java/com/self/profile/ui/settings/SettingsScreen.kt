@@ -848,7 +848,13 @@ private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Un
     }
 }
 
-/** 备份时间展示格式：分钟精度够用，秒级对用户没有意义（风格对齐 util/DateFormats.kt） */
+/**
+ * 备份时间展示格式：ISO 式日期 + 24 小时制时分。
+ *
+ * 刻意不复用 util/DateFormats：那里的 FULL 是「yyyy年M月d日」中文式、不带时分，
+ * 而备份时间要能区分「今天上午导的」和「今天下午导的」，所以格式不同、也不合并。
+ * 放在本文件是因为该工具类不在本任务改动范围内。
+ */
 private val BackupTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
 /**
@@ -881,6 +887,11 @@ private fun DataManageBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // 必须可滚动：底部三个 action + 安全提示在字号放大档位下会超出 sheet 高度，
+                // ModalBottomSheet 不会自动给内容加滚动，超出即裁切且用户无法触达底部的 action。
+                // 顺序放在 padding 之前：滚动视口由此包含全部内容与内边距，能滚到真正的末尾；
+                // 若放到 padding 之后，24dp 底距会变成永久固定占用、反而压矮可视区。
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 24.dp)
         ) {
