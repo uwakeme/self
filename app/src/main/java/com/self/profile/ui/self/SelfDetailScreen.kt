@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,13 +38,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.self.profile.R
 import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.SelfModule
 import com.self.profile.ui.components.Avatar
 import com.self.profile.ui.components.EditIcon
+import com.self.profile.ui.components.EmptyState
 import com.self.profile.ui.components.PhotosSection
 import com.self.profile.ui.components.SectionWrap
 import com.self.profile.ui.components.dialogs.AddAnniversaryDialog
@@ -83,16 +88,51 @@ fun SelfDetailScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     when (val s = state) {
-        SelfDetailUiState.Loading, SelfDetailUiState.Empty -> {
+        SelfDetailUiState.Loading -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "加载中…", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = stringResource(R.string.self_loading),
+                    style = MaterialTheme.typography.bodyLarge
+                )
             }
         }
+        // DB 里没有 is_self = 1 的行（例如刚执行完「清除全部数据」）时走这里。
+        // 之前与 Loading 并到同一分支，用户会永久卡在「加载中…」。
+        SelfDetailUiState.Empty -> SelfEmptyState()
         is SelfDetailUiState.Loaded -> SelfContent(
             person = s.self,
             viewModel = viewModel,
             scrollTo = scrollTo
         )
+    }
+}
+
+/**
+ * 自我档案为空时的空态：说明现状 + 指引下一步。
+ *
+ * 当前应用没有「新建自我档案」的入口（self 行只由种子数据或备份导入产生），
+ * 因此这里引导用户去设置页导入备份，而不是给一个点了没反应的按钮。
+ */
+@Composable
+private fun SelfEmptyState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            EmptyState(
+                title = stringResource(R.string.self_empty_title),
+                description = stringResource(R.string.self_empty_description),
+                icon = Icons.Outlined.Person
+            )
+            Text(
+                text = stringResource(R.string.self_empty_action_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+        }
     }
 }
 

@@ -17,6 +17,12 @@
     <string name="action_delete">删除</string>
     <string name="action_add">添加</string>
 
+    <!-- 我的档案（Self） -->
+    <string name="self_loading">加载中…</string>
+    <string name="self_empty_title">还没有我的档案</string>
+    <string name="self_empty_description">自我档案不存在，或已被「清除全部数据」一并清空</string>
+    <string name="self_empty_action_hint">可前往「设置 → 数据管理」导入此前导出的备份来恢复</string>
+
     <!-- 提醒通知 -->
     <string name="notif_channel_reminder_id">reminder_channel</string>
     <string name="notif_channel_reminder_name">生日纪念日提醒</string>
