@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -50,11 +51,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -121,6 +124,27 @@ fun SettingsScreen(
     var editing by remember { mutableStateOf<Reminder?>(null) }
     var pendingDelete by remember { mutableStateOf<Reminder?>(null) }
 
+    val listState = rememberLazyListState()
+
+    // 切 Tab 会让 itemsIndexed 的数据源从「上百条」骤减到「几条」。改之前这里是
+    // Column + verticalScroll，ScrollState 会把 offset 自动夹到 maxValue，所以看不出问题；
+    // 换成 LazyColumn 后 firstVisibleItemIndex 可能停在超出新 itemCount 的位置，列表直接空白。
+    //
+    // 刻意「只在越界时夹回边界」而不是每次切 Tab 都滚回顶部：前者等价于 ScrollState 的夹取语义
+    // （新列表够长就保持原位置，不够长才落到末尾），无条件归位则是每次切 Tab 都丢位置的行为变更。
+    // 观察 totalItemsCount 而不是读一次 layoutInfo，是因为新 itemCount 要等 measure 之后才反映到
+    // layoutInfo 上，在 effect 体里直接读拿到的是上一帧的旧值；持续观察还能顺带兜住
+    // 「停留在列表深处时删掉提醒」这类同类的骤减。
+    LaunchedEffect(state.currentTab) {
+        snapshotFlow { listState.layoutInfo.totalItemsCount }
+            .collect { total ->
+                val lastIndex = total - 1
+                if (lastIndex >= 0 && listState.firstVisibleItemIndex > lastIndex) {
+                    listState.scrollToItem(lastIndex)
+                }
+            }
+    }
+
     // Android 13+ 通知运行时权限：不申请的话提醒到点全部静默
     val context = LocalContext.current
     var notifPermissionGranted by remember { mutableStateOf(checkNotifPermission(context)) }
@@ -163,6 +187,7 @@ fun SettingsScreen(
         // 无限高约束，提醒列表再套 LazyColumn 会直接崩（infinity maximum height constraints），
         // 不滚动又无法只组化可见项，所以各 section 一律摊平成 LazyListScope 的 item。
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteForever
@@ -27,10 +28,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +47,6 @@ import com.self.profile.domain.model.Person
 import com.self.profile.domain.model.Reminder
 import com.self.profile.ui.components.Avatar
 import com.self.profile.ui.components.EmptyState
-import com.self.profile.ui.components.SectionCard
 import com.self.profile.util.DateFormats
 import java.time.LocalDate
 
@@ -63,6 +65,22 @@ fun RecycleBinScreen(
     var pendingPurgePerson by remember { mutableStateOf<Person?>(null) }
     var pendingPurgeReminder by remember { mutableStateOf<Reminder?>(null) }
     var showEmptyConfirm by remember { mutableStateOf(false) }
+
+    val listState = rememberLazyListState()
+
+    // 人物段与提醒段是两块互相独立的条件区域：彻底删除 / 恢复掉最后一个元素时，
+    // 整块（标题 + N 行）会一起从 LazyColumn 里消失，firstVisibleItemIndex 可能因此越界、
+    // 渲染成空白。与设置页同一套策略：只在越界时夹回边界，位置还够用就保持不动。
+    // 持续观察 totalItemsCount 还能兜住「停在列表深处时删掉/恢复掉中间某一条」。
+    LaunchedEffect(state.people.size, state.reminders.size) {
+        snapshotFlow { listState.layoutInfo.totalItemsCount }
+            .collect { total ->
+                val lastIndex = total - 1
+                if (lastIndex >= 0 && listState.firstVisibleItemIndex > lastIndex) {
+                    listState.scrollToItem(lastIndex)
+                }
+            }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -101,6 +119,7 @@ fun RecycleBinScreen(
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
@@ -248,7 +267,7 @@ fun RecycleBinScreen(
 /**
  * 回收站卡片被 LazyColumn 拆成多段后，每一段延续同一块卡片背景。
  *
- * 与 [SectionCard] 视觉等价（同样只有 surface 背景 + 20dp 内边距，无边框无圆角），
+ * 与 SectionCard 视觉等价（同样只有 surface 背景 + 20dp 内边距，无边框无圆角），
  * 只是纵向内边距交给各段自己给，避免段与段之间露出缝隙。
  * 横向不用再补边距：外层 LazyColumn 已经整体留了 16.dp。
  */
