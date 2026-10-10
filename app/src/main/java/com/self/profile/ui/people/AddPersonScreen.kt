@@ -57,8 +57,8 @@ import com.self.profile.util.parseHexColor
  *
  * - 必填：姓名、关系
  * - 可选：MBTI、头像颜色、亲密程度
- * - 姓名为空时"保存"按钮置灰；红色「请输入姓名」只在用户点过保存且姓名仍为空时出现，
- *   重新输入即复位
+ * - 姓名「为空白」（空串或纯空格）时点保存会被写入守卫拦下，并显示红色「请输入姓名」；
+ *   保存按钮只因「保存中」置灰，不因姓名为空置灰，红字在重新输入后立即复位
  * - 保存成功后返回人物图鉴，列表首位
  */
 @Composable
@@ -113,7 +113,9 @@ fun AddPersonScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // 姓名（必填）：红字提示只在用户点过保存、姓名仍为空时出现
+            // 姓名（必填）：红字提示只在用户点过保存、姓名仍为空白时出现
+            // 用 isBlank() 而非 isEmpty()：写入守卫 AddPersonViewModel.isValid() 判的是 isNotBlank()，
+            // 若这里判 isEmpty()，输入纯空格时守卫会拦下写入但界面无任何反馈，变成静默 no-op
             OutlinedTextField(
                 value = form.name,
                 onValueChange = {
@@ -124,8 +126,8 @@ fun AddPersonScreen(
                 label = { Text("姓名 *") },
                 placeholder = { Text("请输入") },
                 singleLine = true,
-                isError = attemptedSave && form.name.isEmpty(),
-                supportingText = if (attemptedSave && form.name.isEmpty()) {
+                isError = attemptedSave && form.name.isBlank(),
+                supportingText = if (attemptedSave && form.name.isBlank()) {
                     { Text("请输入姓名", color = MaterialTheme.colorScheme.error) }
                 } else null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
