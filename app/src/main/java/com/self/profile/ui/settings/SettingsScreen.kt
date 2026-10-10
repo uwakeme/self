@@ -40,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,6 +68,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.self.profile.BuildConfig
+import com.self.profile.R
 import com.self.profile.data.backup.DataExporter
 import com.self.profile.domain.model.DarkModePref
 import com.self.profile.domain.model.FontSizePref
@@ -80,7 +83,10 @@ import com.self.profile.ui.theme.WarmJournalColors
 import com.self.profile.util.DateFormats
 import com.self.profile.util.LunarHelper
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * 设置页 / 提醒中心（US-012 / US-013 / US-014 / US-015 / US-018）。
@@ -398,6 +404,7 @@ fun SettingsScreen(
     // 数据管理 BottomSheet
     if (showDataManageSheet) {
         DataManageBottomSheet(
+            lastBackupTime = state.settings.lastBackupTime,
             onExport = {
                 showDataManageSheet = false
                 exportLauncher.launch(DataExporter.suggestedFileName())
@@ -841,9 +848,22 @@ private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Un
     }
 }
 
+/** 备份时间展示格式：分钟精度够用，秒级对用户没有意义（风格对齐 util/DateFormats.kt） */
+private val BackupTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+
+/**
+ * 把 [SettingsDataStore.setLastBackupTime] 写入的墙上时钟毫秒值格式成本地时区时间。
+ * 调用方负责处理 null —— 没有备份时间时不该显示成一个像模像样的日期。
+ */
+private fun formatBackupTime(millis: Long): String =
+    Instant.ofEpochMilli(millis)
+        .atZone(ZoneId.systemDefault())
+        .format(BackupTimeFormatter)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DataManageBottomSheet(
+    lastBackupTime: Long?,
     onExport: () -> Unit,
     onImport: () -> Unit,
     onClear: () -> Unit,
@@ -851,6 +871,8 @@ private fun DataManageBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
+    // null = 从没导出过，别退化成 1970 年那种「看起来有备份」的假象
+    val lastBackupText = lastBackupTime?.let { formatBackupTime(it) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -874,6 +896,57 @@ private fun DataManageBottomSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            // 上次备份时间：allowBackup=false 后系统不再兜底，用户自己知不知道上次导过全靠这一行
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.data_last_backup_label),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = lastBackupText
+                        ?: stringResource(R.string.data_last_backup_never),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (lastBackupText == null) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (lastBackupText == null) {
+                        WarmJournalColors.Primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+
+            // 数据安全提示：系统自动备份已关闭（AndroidManifest allowBackup=false），
+            // 换机前只能靠这里手动导出的 zip，必须把这件事明说
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = stringResource(R.string.data_security_notice_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.data_security_notice_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             // 导出数据
             DataManageAction(

@@ -13,9 +13,16 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
+    <!--
+      allowBackup=false：人物档案在 DB 里是明文（姓名、生日、私人笔记、愿望清单、互动记录），
+      而应用又自带生物识别应用锁，等于产品自己声明这些数据敏感。不应再默认进 Google 云备份。
+      代价是换手机/平板完全靠应用内「设置 → 数据管理 → 导出备份」生成 zip，换机前务必先导。
+      注意 allowBackup=false 同时禁用云备份与设备到设备传输，
+      所以下面这两个引用（backup_rules / data_extraction_rules）当前都不生效，保留仅为将来恢复时不用重写白名单。
+    -->
     <application
         android:name=".SelfApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"

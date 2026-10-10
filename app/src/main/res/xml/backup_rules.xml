@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ★ 本文件当前【不生效】：AndroidManifest.xml 里 android:allowBackup="false"，
+    而 allowBackup=false 会同时关闭云备份与设备到设备传输，所以下面的白名单根本不会被读取。
+
+  为什么保留而不删：用户已拍板走「方案 A」（关闭系统备份），删掉文件会让将来想恢复这个能力的人
+  失去线索——包括「原来白名单漏了 files/photos」这个已知缺陷的历史。
+
+  将来若要恢复系统备份，需要同时改三处，缺一不可：
+    1. AndroidManifest.xml：android:allowBackup 改回 "true"
+    2. 本文件 <include domain="file" path="photos/" />  ← 必须补！
+       照片的绝对路径存在 DB 里，白名单不含 photos 时会出现「DB 恢复了、照片没恢复」，
+       换机后每条 Photo.url 指向新设备上不存在的路径，所有人物照片静默丢失且无任何报错。
+    3. data_extraction_rules.xml 同步补 device-transfer 段（否则换机走的是传输通道，不走云备份）
+
+  只做第 1 步、不补第 2 步，会比 allowBackup=true 更容易丢数据。
+-->
 <full-backup-content>
     <!-- 数据库（用户档案、人物、提醒）参与备份 -->
     <include domain="database" path="." />

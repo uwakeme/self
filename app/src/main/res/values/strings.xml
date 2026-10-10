@@ -36,4 +36,12 @@
     <!-- 桌面小组件 -->
     <string name="widget_title">近期提醒</string>
     <string name="widget_no_reminders">暂无近期提醒</string>
+
+    <!-- 数据管理：数据安全提示 + 上次备份时间
+         AndroidManifest 已设 allowBackup=false（方案 A），换机只能靠导出 zip，
+         所以这里必须把「系统不会帮你备份」明说给用户听。 -->
+    <string name="data_last_backup_label">上次备份</string>
+    <string name="data_last_backup_never">从未备份过</string>
+    <string name="data_security_notice_title">数据不会自动备份</string>
+    <string name="data_security_notice_body">本应用的人物档案、提醒和照片只保存在这台设备上，不会被系统自动备份到 Google。\n\n换手机或平板前，请先用「导出备份」生成 zip 并自行保存；换机后在「数据管理」里用「导入备份」恢复。</string>
 </resources>
