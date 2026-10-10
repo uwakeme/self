@@ -23,9 +23,11 @@ import org.junit.jupiter.api.Test
  * 再用 Navigation 解析字符串路由的入口 [NavGraph.findNode]。
  * 整条链路不碰 `android.content.Context`，因此不需要设备、不需要 Robolectric。
  *
- * 覆盖边界（刻意为之）：`NavDestination.matchRoute` 内部会调 `android.net.Uri.parse`，
- * 纯 JVM 下没有真实 Uri 实现，带占位符的匹配跑不了。那部分放在 androidTest
- * `NavGraphRouteResolutionTest` 里用真机 Uri 验。
+ * 覆盖边界（刻意为之）：`NavDestination.matchRoute` 内部要调 `android.net.Uri`，
+ * 纯 JVM 下没有真实 Uri 实现，`matchRoute` 恒返回 null——等于 pattern 匹配完全不参与，
+ * `findNode` 退化成纯字符串相等比较。因此本文件**证不了「不会被详情路由吃掉」**，
+ * 那条断言放在 androidTest `NavGraphRouteResolutionTest` 里用真机 Uri 验。
+ * 本文件能真正守住的是「AddPerson 不在 `people/` 命名空间下」这条前缀不变量。
  */
 class RouteNamespaceIsolationTest {
 
@@ -55,7 +57,16 @@ class RouteNamespaceIsolationTest {
             addDestination(destination(Route.AddPerson.path))
         }
 
-    /** 核心红线：解析添加人物路由，命中的必须是添加人物自己 */
+    /**
+     * 解析添加人物路由，命中的必须是添加人物自己。
+     *
+     * **这条在纯 JVM 下证不了撞车**：`matchRoute` 依赖 `android.net.Uri`，此处恒返回
+     * null，等于 pattern 匹配完全不参与，`findNode` 退化成纯字符串相等比较。
+     * 所以即便有人把 AddPerson 改回 `people/add`，这条**仍会绿**。
+     *
+     * 真正能证「不会被吃掉」的那条在 androidTest `NavGraphRouteResolutionTest`，
+     * 那里有真实 Uri。本条只守一个弱得多的性质：`person-add` 解析到的是添加人物自己。
+     */
     @Test
     fun `添加人物路由不会被详情路由吃掉`() {
         val resolved = requireNotNull(navGraphInAppOrder().findNode(Route.AddPerson.path)) {
@@ -65,13 +76,15 @@ class RouteNamespaceIsolationTest {
         assertEquals(
             Route.AddPerson.path,
             resolved.route,
-            "`${Route.AddPerson.path}` 解析到了 `${resolved.route}`，说明被详情路由吃掉了"
+            "`${Route.AddPerson.path}` 解析到了 `${resolved.route}`"
         )
     }
 
     /**
      * 隔离的真正含义：添加人物路由不在 `people/` 命名空间下。
-     * 这是 Task 1 修法本身，也是上面那条断言的根因——将来谁把它改回 `people/xxx`，这条立刻红。
+     *
+     * **这是本文件里唯一能守住 Task 1 修法的断言**——它不依赖 pattern 匹配，
+     * 纯字符串前缀判断，谁把 AddPerson 改回 `people/xxx` 它就红。
      */
     @Test
     fun `添加人物路由不在 people 命名空间下`() {
@@ -82,9 +95,10 @@ class RouteNamespaceIsolationTest {
     }
 
     /**
-     * 隔离后结果与注册顺序无关：两种顺序都只解析到添加人物路由。
-     * 这条守的是 FIX_PLAN 里的原始故障模型——按顺序取第一个命中。
-     * 顺序一变就红，说明有人又把两条路由放回同一个命名空间了。
+     * 两种注册顺序下 `person-add` 都解析到添加人物路由。
+     *
+     * 注意：由于纯 JVM 下 `matchRoute` 恒为 null，这条只反映字符串相等比较的结果，
+     * **不是**「顺序无关性」的证明；顺序相关的真实行为要靠 androidTest 验。
      */
     @Test
     fun `两种注册顺序下 person-add 都解析到添加人物路由`() {

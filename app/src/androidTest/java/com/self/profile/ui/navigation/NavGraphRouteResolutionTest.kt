@@ -45,8 +45,16 @@ class NavGraphRouteResolutionTest {
     /**
      * 核心红线：详情路由的 pattern 不能匹配到添加人物路由。
      *
-     * 这条是「命名空间隔离」最强形式的断言——不经过 `findNode` 的精确匹配短路，
-     * 直接让带 `{personId}` 占位符的 pattern 去做模式匹配。
+     * 这条**刻意绕开 `findNode`**，直接对带 `{personId}` 占位符的 pattern 调 `matchRoute`。
+     *
+     * 绕开的原因：`NavGraph.findNode(route)` 是单趟 `firstOrNull`，逐节点判
+     * `it.route.equals(route) || it.matchRoute(route) != null`，且详情路由注册在前。
+     * 只要 pattern 匹配成立，第一个节点就当场返回——`findNode` 的结果同时受
+     * "注册顺序" 和 "该节点自身是否命中" 两个因素影响，不是一条干净的隔离断言。
+     * 直接问 pattern 本身，则只检验「命名空间隔离」这一条不变量。
+     *
+     * 这样即使将来 Navigation 改动 `findNode` 的内部实现（例如改成两趟、
+     * 或加字面量优先），这条断言的意图依然成立。
      */
     @Test
     fun 详情路由不匹配添加人物路由() {
