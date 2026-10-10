@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +57,8 @@ import com.self.profile.util.parseHexColor
  *
  * - 必填：姓名、关系
  * - 可选：MBTI、头像颜色、亲密程度
- * - 姓名为空时"保存"按钮置灰 + 提示
+ * - 姓名为空时"保存"按钮置灰；红色「请输入姓名」只在用户点过保存且姓名仍为空时出现，
+ *   重新输入即复位
  * - 保存成功后返回人物图鉴，列表首位
  */
 @Composable
@@ -67,6 +69,8 @@ fun AddPersonScreen(
 ) {
     val form by viewModel.form.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
+    // 是否点过保存：只有「点过保存 + 姓名为空」才标红，避免刚进页面就显示「请输入姓名」
+    var attemptedSave by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
 
     Scaffold { inner ->
@@ -109,15 +113,19 @@ fun AddPersonScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // 姓名（必填）
+            // 姓名（必填）：红字提示只在用户点过保存、姓名仍为空时出现
             OutlinedTextField(
                 value = form.name,
-                onValueChange = viewModel::setName,
+                onValueChange = {
+                    viewModel.setName(it)
+                    // 重新输入即复位错误态，不用等到下次点保存
+                    attemptedSave = false
+                },
                 label = { Text("姓名 *") },
                 placeholder = { Text("请输入") },
                 singleLine = true,
-                isError = form.name.isEmpty(),
-                supportingText = if (form.name.isEmpty()) {
+                isError = attemptedSave && form.name.isEmpty(),
+                supportingText = if (attemptedSave && form.name.isEmpty()) {
                     { Text("请输入姓名", color = MaterialTheme.colorScheme.error) }
                 } else null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -154,12 +162,15 @@ fun AddPersonScreen(
             // 保存按钮
             Button(
                 onClick = {
+                    attemptedSave = true
                     viewModel.save(
                         onSaved = { person ->
                             // 用 Toast 而非 Snackbar：Snackbar 依赖当前 Scaffold 的 SnackbarHost，
                             // popBackStack 后 Composable 销毁，Snackbar 会跟着消失；Toast 是 Window 级，
                             // 跟 Composable 生命周期无关
                             Toast.makeText(context, "已添加「${person.name}」", Toast.LENGTH_SHORT).show()
+                            // 保存成功后复位，避免下次进页面残留错误态
+                            attemptedSave = false
                             onSaved()
                         },
                         onError = { msg ->
