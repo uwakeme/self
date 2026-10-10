@@ -112,7 +112,9 @@ class DataExporter @Inject constructor(
      * 清空所有用户数据（人物 + 提醒 + 照片，含回收站软删行）。
      *
      * 设计原则：
-     * - **不**触碰设置项（深色模式、字体、应用锁、提醒默认值、模块顺序等都是 app 偏好，不属于"数据"）。
+     * - **不**触碰用户偏好类设置项（深色模式、字体、应用锁、提醒默认值、模块顺序等都是 app 偏好，
+     *   不属于"数据"）。唯一的例外是 `user_initialized`——它不是偏好，是"用户的数据生命周期已由
+     *   用户自己接管"这一事实的记账，见下方说明。
      * - 先删提醒再删人物，避免顺序问题（虽然当前 schema 没外键，但顺序上更安全）。
      * - 照片文件在最后清（即便 DB 引用已断，文件不再被访问）。
      *
@@ -122,6 +124,13 @@ class DataExporter @Inject constructor(
         val peopleBefore = personRepo.observeAll().first().size
         val remindersBefore = reminderRepo.observeAll().first().size
         val photosBefore = photoStorage.photosDir().listFiles()?.size ?: 0
+
+        // 「已初始化」开关：清库 = 用户主动接管自己的数据，不再由种子数据接管。
+        // 不置位的话，下次冷启动 seedIfEmpty() 看到「库为空 + 开关为 false」会把 5 个
+        // demo 人物原样塞回来，用户以为清干净了其实没有。
+        // 放在删除动作之前：万一中途失败留下半清不空的库，开关已经置位，
+        // 至少不会再有种子复活来二次污染。
+        settingsStore.setUserInitialized(true)
 
         // 先撤掉全部 WorkManager 调度，再清数据——否则留下触发时读不到数据的孤儿任务
         com.self.profile.work.ReminderScheduler.cancelAll(appContext)
