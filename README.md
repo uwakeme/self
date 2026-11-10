@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./banner.webp" alt="自我档案与人物图鉴 — 温暖手账风格的个人档案 Android 应用" width="100%">
+</p>
+
 # 自我档案与人物图鉴
 
 一款面向个人用户的 Android 应用，用温暖手账风格记录自我与身边重要的人。纯本地存储、隐私优先。
